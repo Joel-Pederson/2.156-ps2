@@ -7,10 +7,21 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
+
+  # --- Required by the course repo (2155-CP2-2026/requirements.txt) ---
   - numpy
   - scipy
-  - matplotlib
   - pandas
+  - matplotlib
+  - scikit-learn
+  - pillow
+
+  # --- Surrogate models beyond the linear baseline ---
+  - pytorch        # CPU/MPS build; Apple Silicon has no CUDA
+  - lightgbm
+
+  # --- Notebook tooling ---
   - jupyterlab
   - ipykernel
+  - nbdime         # readable notebook diffs/merges; see README
   - ruff
