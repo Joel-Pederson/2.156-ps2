@@ -1,0 +1,10 @@
+# The commit of https://github.com/decode-mit/2155-CP2-2026 that this repo is
+# built against. setup_data.sh checks the course clone out at exactly this.
+#
+# Everything we produce is relative to the diversity_score / datasets at this
+# commit, so moving the pin is a deliberate act: run `./setup_data.sh --update`,
+# which rewrites the line below and shows you what changed. A pin that moves in
+# a commit of its own is a pin you can bisect against later.
+#
+# 221250c  2026-10-21  "update https and readme"
+221250c9b65aa5796b84d977b1c4c24c2334afe0
