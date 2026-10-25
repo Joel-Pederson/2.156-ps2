@@ -1,0 +1,8 @@
+# Readable notebook diffs and three-way merges. Each collaborator needs nbdime
+# installed and `nbdime config-git --enable` run once, or these drivers are undefined.
+*.ipynb	diff=jupyternotebook
+*.ipynb	merge=jupyternotebook
+
+# GitHub's "Languages" bar (cosmetic only) — it counts bytes, and notebooks full
+# of embedded plot images swamp it.
+*.ipynb	linguist-documentation
