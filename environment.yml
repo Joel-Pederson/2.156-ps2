@@ -25,3 +25,6 @@ dependencies:
   - ipykernel
   - nbdime         # readable notebook diffs/merges; see README
   - ruff
+
+  # --- Tests (see tests/; run with `pytest`) ---
+  - pytest

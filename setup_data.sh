@@ -11,6 +11,8 @@
 # earlier results would quietly stop being comparable.
 #
 #   ./setup_data.sh            # fetch/restore the clone at the pinned commit
+#   ./setup_data.sh --check    # has the course repo moved past our pin? (reads only;
+#                              #   exit 0 = up to date, 1 = moved, 2 = couldn't reach GitHub)
 #   ./setup_data.sh --update   # move the pin to the course repo's latest
 set -euo pipefail
 
@@ -20,10 +22,12 @@ DEST="$PS2_ROOT/data/cp2-repo"
 PIN_FILE="$PS2_ROOT/course_commit.txt"
 
 UPDATE=0
+CHECK=0
 case "${1:-}" in
   --update) UPDATE=1 ;;
+  --check)  CHECK=1 ;;
   "")       ;;
-  *)        echo "usage: $0 [--update]" >&2; exit 2 ;;
+  *)        echo "usage: $0 [--check | --update]" >&2; exit 2 ;;
 esac
 
 read_pin() {
@@ -41,6 +45,22 @@ write_pin() { # $1 = sha, $2 = date, $3 = subject
 [ -f "$PIN_FILE" ] || { echo "ERROR: $PIN_FILE missing" >&2; exit 1; }
 PINNED="$(read_pin)"
 [ -n "$PINNED" ] || { echo "ERROR: no commit found in $PIN_FILE" >&2; exit 1; }
+
+# --check only asks GitHub which commit the course repo is at. It downloads nothing and
+# never touches data/. The daily GitHub job runs this; a non-zero exit emails the repo owner.
+if [ "$CHECK" -eq 1 ]; then
+  if ! LATEST="$(git ls-remote "$COURSE_REPO" HEAD 2>/dev/null | cut -f1)" || [ -z "$LATEST" ]; then
+    echo "Could not reach $COURSE_REPO" >&2
+    exit 2
+  fi
+  if [ "$LATEST" = "$PINNED" ]; then
+    echo "Up to date: the course repo is still at our pin (${PINNED:0:7})."
+    exit 0
+  fi
+  echo "The course repo has moved: our pin is ${PINNED:0:7}, the latest is ${LATEST:0:7}."
+  echo "Review what changed (especially utils_public.py) with:  ./setup_data.sh --update"
+  exit 1
+fi
 
 # A bare `git init` + targeted fetch keeps this shallow: we never download the
 # course repo's history, just the one tree we want.

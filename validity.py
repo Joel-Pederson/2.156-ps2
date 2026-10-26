@@ -1,274 +1,512 @@
-"""Validity harness: how often is a surrogate right when it says a grid is good?
+"""The model scorecard: how often is a model right when it says a grid passes?
 
-R2 is the wrong metric for CP2. We do not care about average prediction error --
-we care about one question: when the model says a grid clears 0.75, is it right?
-A model can have a fine R2 and still be worthless (or worse than random) at the
-threshold, which is exactly what the starter notebook's linear model does to the
-Transportation advisor.
+Where this fits
+---------------
+This is the *protocol* module. Everything about measuring models honestly lives here, and
+every later stage imports from it:
 
-So this measures precision at the threshold instead, honestly:
+* ``load_dev()``         The labels we're allowed to learn from. Lockbox labels come back as
+                         NaN ("missing"), so ordinary code physically can't see them (risk R13).
+* ``open_lockbox()``     The ONLY way to reach the lockbox labels. It refuses unless you confirm,
+                         and appends every opening to docs/lockbox_log.md.
+* ``cv_splits()``        5-fold cross-validation, repeated 3 times with different shuffles.
+* ``fold_data()``        One fold's train and validation data. Rotation augmentation, when asked
+                         for, touches only the training part, and only after the split.
+* ``VARIANTS``           The model variants we compare, declared up front (at most 6 per role).
+* ``scorecard()``        Out-of-fold predictions for every variant and advisor, and the numbers
+                         we choose models by.
 
-  stage 1  out-of-fold predictions on the labeled grids, so every prediction
-           comes from a model that never saw that grid. For each confidence
-           level, how many candidates survive and what fraction are truly valid?
+Why not just R²? (README, "Accuracy or precision?") R² is the average error over the whole
+0–1 score range, and an error at 0.2 versus 0.3 never matters here: both fail. The scorecard
+leads with **approved at 98%**: how many dev grids a model can approve while 98% of its
+approvals truly score ≥ 0.75. Precision protects the score; the count is room to choose
+varied grids.
 
-  stage 2  fit on all labels, screen all 500k grids, and count how many clear
-           every advisor at once. Then greedily pick 100 spread-out ones and
-           score them, so each threshold gets an estimated final score.
+Reads / writes
+--------------
+reads   data/cp2-repo/datasets/*.npy   the course data (fetch with ./setup_data.sh)
+        course_commit.txt              the pinned course version; part of the cache key
+writes  data/cache/oof/*.npy, *.json   cached out-of-fold predictions (gitignored)
+        docs/lockbox_log.md            only when the lockbox is opened
 
-Two things this cannot tell us, both worth keeping in view:
+How to run
+----------
+    python validity.py                          # the full scorecard (~5-10 min first time, ~1 s after)
+    python validity.py --variants gbm_engineered
+    python validity.py --no-cache               # recompute everything from scratch
 
-  - No grid in the dataset carries all four advisors' labels (the four labeled
-    subsets are near-disjoint), so joint validity is never observed. The
-    four-advisor numbers here multiply the marginals, which assumes the models
-    fail independently. Unverifiable, possibly wrong.
-  - Everything is measured on dataset grids, which are random. Grids you
-    *optimize* are selected for being where the model is most enthusiastic, and
-    so disproportionately where it is wrong. These numbers are an optimistic
-    bound for generated designs, not a forecast.
-
-    python validity.py                  # both stages, LightGBM
-    python validity.py --model linear   # the starter's model, for comparison
-    python validity.py --stage 1        # just the precision tables
+Surprises
+---------
+* The lockbox recipe (seed 2156) is frozen. The planning probes respected it, and
+  tests/test_protocol.py checks its fingerprint so it can't silently change.
+* "Approved at 98%" picks its threshold on the same out-of-fold predictions it's measured on,
+  so it flatters every model a little, and equally. Good for comparing models; not a promise.
+* Featurizing the whole dev set *before* splitting is not leakage: a feature is a fixed formula
+  of one grid, with nothing learned from data. Anything that *is* learned, such as Ridge's
+  feature scaling, lives inside the model, so it's refit on each fold's training part.
+* Screening all 500k grids used to live here; in Stage 2 it moves to surrogates.py.
 """
 
 from __future__ import annotations
 
 import argparse
+import functools
+import hashlib
+import json
 import os
-import sys
+import subprocess
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
+import sklearn
+from sklearn.linear_model import Ridge
+from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+import features
 
 PS2_ROOT = os.path.dirname(os.path.abspath(__file__))
 COURSE_ROOT = os.path.join(PS2_ROOT, "data", "cp2-repo")
-CACHE_DIR = os.path.join(PS2_ROOT, "data", "cache")
+CACHE_DIR = os.path.join(PS2_ROOT, "data", "cache", "oof")
+LOCKBOX_LOG = os.path.join(PS2_ROOT, "docs", "lockbox_log.md")
+PIN_FILE = os.path.join(PS2_ROOT, "course_commit.txt")
 
-ADVISORS = ["Wellness", "Tax", "Transportation", "Business"]
-THRESHOLD = 0.75
-LEVELS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+ADVISORS = ("Wellness", "Tax", "Transportation", "Business")
+THRESHOLD = 0.75  # a grid counts only if every advisor scores it at least this
+TARGET_PRECISION = 0.98  # the plan's operating confidence, per advisor
+LEVELS = (0.75, 0.80, 0.85)
+BAND = (0.6, 0.9)  # "near the cutoff": where errors flip pass and fail
 
-if not os.path.isdir(COURSE_ROOT):
-    sys.exit(f"course data missing at {COURSE_ROOT} -- run ./setup_data.sh")
-sys.path.insert(0, COURSE_ROOT)
+LOCKBOX_SEED = 2156
+LOCKBOX_SIZE = 1000  # per advisor
+CV_FOLDS = 5
+CV_REPEATS = 3
+CACHE_SCHEMA = 1  # bump if the cache file layout changes
+MAX_VARIANTS_PER_ROLE = 6
 
-# Their diversity_score, not a reimplementation: it is the graded objective, and
-# course_commit.txt pins the version we are measuring against.
-from utils_public import diversity_score  # noqa: E402
+
+# --------------------------------------------------------------------------------------
+# data, and the lockbox
+# --------------------------------------------------------------------------------------
 
 
-# --------------------------------------------------------------------------
-# data and features
-# --------------------------------------------------------------------------
-
-def load_data():
+@functools.lru_cache(maxsize=1)
+def _load_raw():
+    """All grids and ALL labels, lockbox included. Private: use load_dev() or open_lockbox()."""
+    datasets = os.path.join(COURSE_ROOT, "datasets")
+    if not os.path.isdir(datasets):
+        raise FileNotFoundError(
+            f"course data missing at {COURSE_ROOT}; run ./setup_data.sh"
+        )
     grids = np.concatenate(
-        [np.load(os.path.join(COURSE_ROOT, "datasets", f"grids_{i}.npy")) for i in range(5)]
+        [np.load(os.path.join(datasets, f"grids_{i}.npy")) for i in range(5)]
     ).astype(np.int8)
-    ratings = np.load(os.path.join(COURSE_ROOT, "datasets", "scores.npy"))
+    ratings = np.load(os.path.join(datasets, "scores.npy"))
+    grids.flags.writeable = False  # cached and shared: nobody gets to edit it in place
+    ratings.flags.writeable = False
     return grids, ratings
 
 
-def onehot(grids):
-    """(n, 7, 7) ints -> (n, 245) float32. One binary feature per cell per district."""
-    oh = (np.arange(5, dtype=np.int8) == grids[..., None])
-    return oh.reshape(len(grids), -1).astype(np.float32)
+def lockbox_mask(ratings):
+    """(500000, 4) bool: True where a label belongs to the lockbox.
+
+    Reads only *which* grids each advisor labelled, never the scores themselves. Every grid
+    that two or more advisors rated goes in, because those are our only evidence about whether
+    models fail on the same grids. The rest is a seeded random fill up to 1,000 per advisor.
+    """
+    labelled = ~np.isnan(ratings)
+    co_rated = labelled.sum(1) >= 2
+    rng = np.random.default_rng(LOCKBOX_SEED)
+    mask = np.zeros(ratings.shape, bool)
+    for a in range(ratings.shape[1]):
+        idx = np.flatnonzero(labelled[:, a])
+        always = idx[co_rated[idx]]
+        rest = idx[~co_rated[idx]]
+        fill = rng.choice(rest, size=LOCKBOX_SIZE - len(always), replace=False)
+        mask[always, a] = True
+        mask[fill, a] = True
+    return mask
 
 
-def counts(grids):
-    """The starter notebook's features: the 49 raw cells plus 5 district counts."""
-    flat = grids.reshape(len(grids), -1).astype(np.float32)
-    tallies = np.stack([(flat == k).sum(1) for k in range(5)], axis=1)
-    return np.hstack([flat, tallies])
+def lockbox_fingerprint(mask):
+    """A short hash of which labels are in the lockbox. Any change to the recipe changes it."""
+    h = hashlib.sha256()
+    for a in range(mask.shape[1]):
+        h.update(np.flatnonzero(mask[:, a]).astype(np.int64).tobytes())
+    return h.hexdigest()
 
 
-def make_model(kind):
-    if kind == "linear":
-        return LinearRegression()
-    import lightgbm as lgb
-
-    return lgb.LGBMRegressor(
-        n_estimators=400, learning_rate=0.05, num_leaves=31, verbose=-1
-    )
+def load_dev():
+    """All 500k grids, plus the labels we may learn from: lockbox labels are NaN."""
+    grids, ratings = _load_raw()
+    dev = ratings.copy()
+    dev[lockbox_mask(ratings)] = np.nan
+    return grids, dev
 
 
-FEATURES = {"linear": counts, "lightgbm": onehot}
+def open_lockbox(reason, *, confirm=False):
+    """The only route to the lockbox labels. Returns (grids, ratings with ONLY lockbox labels).
+
+    The lockbox is the final exam: opened once per frozen pipeline (plan, task 2.7). This
+    refuses unless confirm=True, and every opening is appended to docs/lockbox_log.md
+    with the time, the git commit and your reason.
+    """
+    if not confirm:
+        raise PermissionError(
+            "The lockbox is opened once per frozen pipeline. Pass confirm=True deliberately; "
+            "every opening is logged in docs/lockbox_log.md."
+        )
+    if not reason or not reason.strip():
+        raise ValueError("say why you are opening the lockbox")
+    grids, ratings = _load_raw()
+    lock = np.where(lockbox_mask(ratings), ratings, np.nan)
+    _log_lockbox_opening(reason.strip())
+    return grids, lock
 
 
-# --------------------------------------------------------------------------
-# stage 1: out-of-fold precision
-# --------------------------------------------------------------------------
-
-def out_of_fold(kind, X, y, n_splits=5, seed=0):
-    """Predict every row from a model fitted without it. No leakage, by construction."""
-    oof = np.empty(len(y), dtype=np.float64)
-    for train, test in KFold(n_splits, shuffle=True, random_state=seed).split(X):
-        model = make_model(kind)
-        model.fit(X[train], y[train])
-        oof[test] = model.predict(X[test])
-    return oof
-
-
-def precision_table(oof, y, base_rate):
-    """For each confidence level: survivors, and the fraction of them truly valid."""
-    rows = []
-    truly = y >= THRESHOLD
-    for level in LEVELS:
-        sel = oof >= level
-        n = int(sel.sum())
-        prec = float(truly[sel].mean()) if n else float("nan")
-        rows.append((level, n, prec, prec / base_rate if n else float("nan")))
-    return rows
+def _git_head():
+    try:
+        out = subprocess.run(
+            ["git", "-C", PS2_ROOT, "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return out.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
-def print_precision_table(rows):
-    print(f"    {'require >=':>10} | {'candidates':>10} | {'truly valid':>11} | vs base")
-    print(f"    {'-' * 10}-+-{'-' * 10}-+-{'-' * 11}-+--------")
-    for level, n, prec, lift in rows:
-        if not n:
-            print(f"    {level:>10.2f} | {0:>10} | {'-':>11} |       -")
+def _log_lockbox_opening(reason):
+    os.makedirs(os.path.dirname(LOCKBOX_LOG), exist_ok=True)
+    new = not os.path.exists(LOCKBOX_LOG)
+    with open(LOCKBOX_LOG, "a") as f:
+        if new:
+            f.write(
+                "# Lockbox openings\n\nWritten by validity.open_lockbox(). "
+                "Every line is one look at the final exam.\n\n"
+            )
+        stamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+        f.write(f"- {stamp} · commit {_git_head()} · {reason}\n")
+
+
+def course_pin():
+    """The course-repo commit we build against, read from course_commit.txt."""
+    with open(PIN_FILE) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                return line
+    raise ValueError(f"no commit found in {PIN_FILE}")
+
+
+# --------------------------------------------------------------------------------------
+# cross-validation
+# --------------------------------------------------------------------------------------
+
+
+def cv_splits(n, folds=CV_FOLDS, repeats=CV_REPEATS):
+    """Yield (repeat, fold, train_idx, val_idx) for repeated k-fold cross-validation.
+
+    Repeat r shuffles with seed r, so repeat 0 is exactly the split the planning probes used.
+    Repeating with fresh shuffles shows how much a score moves just from which grids land in
+    which fold. That's the "fold-to-fold noise" the plan's rules compare against.
+    """
+    for r in range(repeats):
+        splitter = KFold(folds, shuffle=True, random_state=r)
+        for f, (train, val) in enumerate(splitter.split(np.arange(n))):
+            yield r, f, train, val
+
+
+def fold_data(grids, y, train_idx, val_idx, augment=False):
+    """One fold's (train grids, train labels, validation grids, validation labels).
+
+    With augment=True, the training part gets all 8 rotations/mirrors, *after* the split.
+    Rotating first would put rotated copies of validation grids into training.
+    """
+    g_train, y_train = grids[train_idx], y[train_idx]
+    if augment:
+        g_train, y_train = features.augment(g_train, y_train)
+    return g_train, y_train, grids[val_idx], y[val_idx]
+
+
+# --------------------------------------------------------------------------------------
+# the declared model variants
+# --------------------------------------------------------------------------------------
+
+GBM_PARAMS = {
+    "n_estimators": 600,
+    "learning_rate": 0.03,
+    "num_leaves": 31,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.8,
+    "random_state": 0,
+    "verbose": -1,
+}
+
+FEATURIZERS = {"onehot": features.onehot, "engineered": features.engineered}
+
+
+@dataclass(frozen=True)
+class Variant:
+    """One model configuration we compare. Declared in VARIANTS, never invented on the fly."""
+
+    features: str  # "onehot" or "engineered"
+    model: str  # "ridge" or "gbm"
+    role: str  # "baseline", "main" or "second_opinion"
+    augment: bool = False  # train on all 8 orientations (training fold only)
+
+    def featurize(self, grids):
+        return FEATURIZERS[self.features](grids)
+
+    def make_model(self):
+        if self.model == "ridge":
+            if self.features == "engineered":
+                # Engineered features live on different scales (counts vs distances). The
+                # scaler is part of the model, so it's refit on each training fold only.
+                return make_pipeline(StandardScaler(), Ridge(alpha=1.0))
+            return Ridge(alpha=1.0)  # one-hot columns are already all 0/1
+        import lightgbm as lgb  # imported here so the tests needn't pay for it
+
+        return lgb.LGBMRegressor(**GBM_PARAMS)
+
+    def spec(self):
+        """Everything that changes this variant's predictions, for the cache key."""
+        spec = {"features": self.features, "model": self.model, "augment": self.augment}
+        if self.model == "gbm":
+            import lightgbm as lgb
+
+            spec.update(gbm_params=GBM_PARAMS, lightgbm=lgb.__version__)
+        if self.features == "engineered":
+            spec["feature_version"] = features.FEATURE_VERSION
+        spec["sklearn"] = sklearn.__version__
+        return spec
+
+
+# The planning probes already compared these four; Stage 1 reproduces them. Stage 2 adds the
+# CNN second-opinion candidates. The cap is per role: a variant counts if a decision rides on it.
+VARIANTS = {
+    "ridge_onehot": Variant("onehot", "ridge", role="baseline"),
+    "gbm_onehot": Variant("onehot", "gbm", role="baseline"),
+    "ridge_engineered": Variant("engineered", "ridge", role="baseline"),
+    "gbm_engineered": Variant("engineered", "gbm", role="main"),
+}
+
+# R² from the dev-only planning probes (repeat 0, 2026-10-25). Stage 1's exit check compares
+# against these: the scorecard must land within ±0.01.
+PLANNING_R2 = {
+    "ridge_onehot": (0.483, 0.758, 0.121, 0.483),
+    "gbm_onehot": (0.504, 0.707, 0.291, 0.500),
+    "ridge_engineered": (0.697, 0.868, 0.649, 0.602),
+    "gbm_engineered": (0.887, 0.968, 0.935, 0.971),
+}
+
+
+# --------------------------------------------------------------------------------------
+# out-of-fold predictions, cached so they can never go stale
+# --------------------------------------------------------------------------------------
+
+
+def cache_key(variant, y, rows):
+    """A hash of everything that could change a variant's out-of-fold predictions.
+
+    That means the variant itself (features, model, settings, library versions), the feature
+    definitions, the exact rows and labels, the course-data version and the CV layout. If any
+    of them changes, the key changes and the cache misses, so a stale prediction can't
+    be reused. This fixes the old bug where a cache was reused just because its shape matched.
+    """
+    payload = {
+        "schema": CACHE_SCHEMA,
+        "variant": variant.spec(),
+        "folds": CV_FOLDS,
+        "repeats": CV_REPEATS,
+        "course_pin": course_pin(),
+        "lockbox_seed": LOCKBOX_SEED,
+        "rows": hashlib.sha256(
+            np.asarray(rows, np.int64).tobytes() + np.asarray(y, np.float64).tobytes()
+        ).hexdigest(),
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def out_of_fold(name, grids, y, rows, use_cache=True):
+    """(CV_REPEATS, n) predictions; each made by a model that never saw that grid."""
+    variant = VARIANTS[name]
+    key = cache_key(variant, y, rows)
+    path = os.path.join(CACHE_DIR, f"{name}-{key[:16]}.npy")
+    if use_cache and os.path.exists(path):
+        return np.load(path)
+
+    preds = np.full((CV_REPEATS, len(y)), np.nan)
+    X = None if variant.augment else variant.featurize(grids)
+    for r, _, train, val in cv_splits(len(y)):
+        if variant.augment:
+            g_train, y_train, g_val, _ = fold_data(grids, y, train, val, augment=True)
+            X_train, X_val = variant.featurize(g_train), variant.featurize(g_val)
         else:
-            print(f"    {level:>10.2f} | {n:>10} | {prec:>10.1%} | {lift:>6.1f}x")
+            X_train, y_train, X_val = X[train], y[train], X[val]
+        model = variant.make_model()
+        model.fit(X_train, y_train)
+        preds[r, val] = model.predict(X_val)
 
-
-# --------------------------------------------------------------------------
-# stage 2: screen all 500k and estimate a final score
-# --------------------------------------------------------------------------
-
-def screen_all(kind, grids, ratings, chunk=50_000):
-    """Fit each advisor on all its labels, then predict every grid. Cached."""
     os.makedirs(CACHE_DIR, exist_ok=True)
-    cache = os.path.join(CACHE_DIR, f"preds_{kind}.npy")
-    if os.path.exists(cache):
-        preds = np.load(cache)
-        if preds.shape == (len(grids), 4):
-            print(f"  (reusing cached predictions: {cache})")
-            return preds
-
-    featurize = FEATURES[kind]
-    models = []
-    for a in range(4):
-        mask = ~np.isnan(ratings[:, a])
-        model = make_model(kind)
-        model.fit(featurize(grids[mask]), ratings[mask, a])
-        models.append(model)
-
-    preds = np.empty((len(grids), 4), dtype=np.float32)
-    for start in range(0, len(grids), chunk):  # chunked: 500k x 245 float32 at once is ~0.5 GB
-        stop = min(start + chunk, len(grids))
-        X = featurize(grids[start:stop])
-        for a, model in enumerate(models):
-            preds[start:stop, a] = model.predict(X)
-
-    # Where an advisor actually rated a grid, trust the label over the model.
-    known = ~np.isnan(ratings)
-    preds[known] = ratings[known]
-
-    np.save(cache, preds)
+    np.save(path, preds)
+    with open(
+        path.replace(".npy", ".json"), "w"
+    ) as f:  # what produced this file, readable
+        json.dump(
+            {"name": name, "key": key, "spec": variant.spec(), "n": len(y)}, f, indent=1
+        )
     return preds
 
 
-def greedy_diverse(grids, n=100, seed=0):
-    """Farthest-point selection: repeatedly take the grid furthest from those picked.
+# --------------------------------------------------------------------------------------
+# the numbers we choose models by
+# --------------------------------------------------------------------------------------
 
-    A cheap stand-in for real max-diversity optimization -- good enough to tell
-    whether a candidate pool *can* yield a spread-out 100.
+
+def approved_at(pred, y, target=TARGET_PRECISION):
+    """How many grids can we approve, highest predictions first, staying `target` precise?
+
+    Walk down the grids from most to least confident. After each one, ask what fraction of
+    those approved so far truly score ≥ 0.75. Return the largest count where that fraction is
+    still ≥ target, the prediction you'd use as the cut-off, and how many of the approved
+    grids truly pass. (0, inf, 0) if no count reaches the target.
     """
-    flat = grids.reshape(len(grids), -1).astype(np.int8)
-    if len(flat) <= n:
-        return np.arange(len(flat))
-
-    rng = np.random.default_rng(seed)
-    picked = [int(rng.integers(len(flat)))]
-    # min normalized Hamming distance from each grid to the picked set, updated incrementally
-    best = (flat != flat[picked[0]]).mean(axis=1)
-    for _ in range(n - 1):
-        nxt = int(np.argmax(best))
-        picked.append(nxt)
-        np.minimum(best, (flat != flat[nxt]).mean(axis=1), out=best)
-    return np.array(picked)
+    order = np.argsort(-pred, kind="stable")
+    hits = np.cumsum(y[order] >= THRESHOLD)
+    precision = hits / np.arange(1, len(y) + 1)
+    ok = np.flatnonzero(precision >= target)
+    if not len(ok):
+        return 0, np.inf, 0
+    last = ok[-1]
+    return last + 1, float(pred[order][last]), int(hits[last])
 
 
-def estimate_scores(preds, grids, marginals):
-    """For each threshold: how many grids pass all four, and what would we score?"""
-    rows = []
+@dataclass
+class Score:
+    """One variant on one advisor, averaged over the CV repeats."""
+
+    r2: float  # share of score variation explained (1 = perfect)
+    r2_fold_sd: float  # how much R² moves fold to fold: the noise yardstick
+    band_rmse: float  # typical error for grids truly scoring 0.6–0.9
+    approved: float  # approved at 98%: grids approved while 98% precise
+    cutoff: float  # the prediction cut-off that achieves it
+    recall: float  # share of all truly-passing grids that those approvals catch
+    precision_at: dict  # level -> (grids predicted ≥ level, fraction truly ≥ 0.75)
+
+
+def score(preds, y):
+    """Summarize (CV_REPEATS, n) out-of-fold predictions against labels y."""
+    fold_r2 = [r2_score(y[val], preds[r, val]) for r, _, _, val in cv_splits(len(y))]
+    band = (y >= BAND[0]) & (y <= BAND[1])
+    per_repeat = [approved_at(p, y) for p in preds]
+    passing = (y >= THRESHOLD).sum()
+    precision_at = {}
     for level in LEVELS:
-        passing = np.flatnonzero((preds >= level).all(axis=1))
-        n = len(passing)
-        joint = float(np.prod([marginals[a][level] for a in range(4)]))
-        if n >= 2:
-            pick = passing[greedy_diverse(grids[passing], n=100)]
-            div = diversity_score(grids[pick])
-        else:
-            div = float("nan")
-        # score ~ (fraction of the 100 that survive) x (diversity among them)
-        rows.append((level, n, joint, div, joint * div if n >= 100 else float("nan")))
-    return rows
+        counts, fracs = [], []
+        for p in preds:
+            sel = p >= level
+            counts.append(sel.sum())
+            fracs.append((y[sel] >= THRESHOLD).mean() if sel.any() else np.nan)
+        precision_at[level] = (float(np.mean(counts)), float(np.nanmean(fracs)))
+    return Score(
+        r2=float(np.mean([r2_score(y, p) for p in preds])),
+        r2_fold_sd=float(np.std(fold_r2)),
+        band_rmse=float(
+            np.mean([np.sqrt(np.mean((p[band] - y[band]) ** 2)) for p in preds])
+        ),
+        approved=float(np.mean([k for k, _, _ in per_repeat])),
+        cutoff=float(np.mean([c for _, c, _ in per_repeat])),
+        recall=float(np.mean([hits for _, _, hits in per_repeat])) / passing,
+        precision_at=precision_at,
+    )
 
 
-# --------------------------------------------------------------------------
+def scorecard(names=None, use_cache=True, verbose=True):
+    """{variant: {advisor: dict(y, preds, score)}} for the dev set."""
+    names = list(names or VARIANTS)
+    grids, dev = load_dev()
+    results = {}
+    for name in names:
+        results[name] = {}
+        for a, advisor in enumerate(ADVISORS):
+            rows = np.flatnonzero(~np.isnan(dev[:, a]))
+            y = dev[rows, a]
+            if verbose:
+                print(f"  {name:<17} {advisor:<15}", end="", flush=True)
+            preds = out_of_fold(name, grids[rows], y, rows, use_cache=use_cache)
+            results[name][advisor] = {"y": y, "preds": preds, "score": score(preds, y)}
+            if verbose:
+                print(" done")
+    return results
+
+
+def print_scorecard(results):
+    """The tables: approved at 98% first (what we choose by), then R² and error near the cutoff."""
+    head = "".join(f"{a:>16}" for a in ADVISORS)
+    some = next(iter(results.values()))
+    n_dev = len(next(iter(some.values()))["y"])
+    print(
+        f"\nApproved at 98%: dev grids approved while ≥98% truly score ≥ 0.75 (of ~{n_dev:,})"
+    )
+    print(f"  {'variant':<18}{head}")
+    for name, by_adv in results.items():
+        cells = "".join(
+            f"{by_adv[a]['score'].approved:>9.0f} ({by_adv[a]['score'].recall:>3.0%})"
+            for a in ADVISORS
+        )
+        print(f"  {name:<18}{cells}")
+    print(
+        "  (in brackets: the share of all truly-passing dev grids those approvals catch)"
+    )
+
+    print("\nR² (1.0 = perfect) ± how much it moves fold to fold (the noise yardstick)")
+    print(f"  {'variant':<18}{head}")
+    for name, by_adv in results.items():
+        cells = "".join(
+            f"{by_adv[a]['score'].r2:>10.3f} ±{by_adv[a]['score'].r2_fold_sd:.3f}"
+            for a in ADVISORS
+        )
+        print(f"  {name:<18}{cells}")
+
+    print("\nTypical error for grids truly scoring 0.6–0.9 (lower is better)")
+    print(f"  {'variant':<18}{head}")
+    for name, by_adv in results.items():
+        print(
+            f"  {name:<18}"
+            + "".join(f"{by_adv[a]['score'].band_rmse:>16.3f}" for a in ADVISORS)
+        )
+
+    worst = max(
+        abs(by_adv[a]["score"].r2 - PLANNING_R2[name][i])
+        for name, by_adv in results.items()
+        if name in PLANNING_R2
+        for i, a in enumerate(ADVISORS)
+    )
+    verdict = "PASS" if worst <= 0.01 else "CHECK"
+    print(
+        f"\nExit check (plan, Stage 1): largest |ΔR²| vs planning = {worst:.3f} -> {verdict} "
+        f"(must be ≤ 0.01)"
+    )
+
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--model", choices=["lightgbm", "linear"], default="lightgbm")
-    ap.add_argument("--stage", type=int, choices=[1, 2], default=None,
-                    help="run only one stage (default: both)")
+    ap = argparse.ArgumentParser(description="The model scorecard (dev set only).")
+    ap.add_argument("--variants", nargs="+", choices=list(VARIANTS), default=None)
+    ap.add_argument(
+        "--no-cache", action="store_true", help="recompute every prediction"
+    )
     args = ap.parse_args()
-
-    kind = args.model
-    featurize = FEATURES[kind]
-    grids, ratings = load_data()
-    print(f"model: {kind}   grids: {grids.shape}   labels/advisor: 5000\n")
-
-    marginals = {}
-    if args.stage != 2:
-        print("=" * 68)
-        print("STAGE 1 -- out-of-fold precision on labeled grids")
-        print("=" * 68)
-    for a in range(4):
-        mask = ~np.isnan(ratings[:, a])
-        g, y = grids[mask], ratings[mask, a]
-        base = float((y >= THRESHOLD).mean())
-        oof = out_of_fold(kind, featurize(g), y)
-        rows = precision_table(oof, y, base)
-        marginals[a] = {level: prec for level, _, prec, _ in rows}
-        if args.stage != 2:
-            print(f"\n  ADVISOR {a} ({ADVISORS[a]})  -- base rate {base:.1%} "
-                  f"(hit rate if you pick blindfolded)")
-            print_precision_table(rows)
-
-    if args.stage == 1:
-        return
-
-    print("\n" + "=" * 68)
-    print("STAGE 2 -- screening all 500,000 grids")
-    print("=" * 68)
-    preds = screen_all(kind, grids, ratings)
-
-    print("\n  per advisor, how many of the 500k clear each level:")
-    print(f"    {'level':>7} | " + " | ".join(f"{n:>14}" for n in ADVISORS))
-    print(f"    {'-' * 7}-+-" + "-+-".join("-" * 14 for _ in ADVISORS))
-    for level in LEVELS:
-        cells = " | ".join(f"{int((preds[:, a] >= level).sum()):>14,}" for a in range(4))
-        print(f"    {level:>7.2f} | {cells}")
-
-    rows = estimate_scores(preds, grids, marginals)
-    print("\n  all four at once, and what it would be worth:")
-    print(f"    {'level':>7} | {'pass all 4':>11} | {'est. valid':>10} | "
-          f"{'diversity':>9} | {'est. score':>10}")
-    print(f"    {'-' * 7}-+-{'-' * 11}-+-{'-' * 10}-+-{'-' * 9}-+-----------")
-    for level, n, joint, div, score in rows:
-        flag = "" if n >= 100 else "   <-- cannot fill 100"
-        d = f"{div:>9.4f}" if div == div else f"{'-':>9}"
-        s = f"{score:>10.4f}" if score == score else f"{'-':>10}"
-        print(f"    {level:>7.2f} | {n:>11,} | {joint:>9.1%} | {d} | {s}{flag}")
-
-    print("\n  est. valid multiplies the four marginal precisions, which assumes the")
-    print("  models fail independently -- unverifiable here, since no grid carries")
-    print("  all four labels. Diversity is from a greedy farthest-point pick of 100,")
-    print("  a lower bound on what real diversity optimization would reach.")
+    print(
+        f"Scorecard: {CV_FOLDS}-fold cross-validation × {CV_REPEATS} repeats, dev set only "
+        f"(lockbox untouched)"
+    )
+    print_scorecard(scorecard(args.variants, use_cache=not args.no_cache))
 
 
 if __name__ == "__main__":
