@@ -1,0 +1,6 @@
+# Tool settings only; this repo isn't an installable package.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]   # import features, validity, ... from the repo root
+addopts = "-ra"               # summarize skips and failures at the end

@@ -1,0 +1,32 @@
+# Runs the test suite on every push to any branch, and on every pull request.
+#
+# The tests guard against the mistakes that would silently ruin results: leakage into the
+# lockbox, a changed lockbox, features that drift, a diversity score that disagrees with the
+# course's, malformed submissions, and course data that isn't the pinned version.
+# CP2_REQUIRE_DATA=1 turns "data missing -> skip" into "data missing -> fail" here, so a
+# broken download can never pass quietly.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the course data at the pinned commit
+        run: ./setup_data.sh
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment-ci.yml
+          cache-environment: true
+
+      - name: Run the tests
+        shell: bash -el {0}
+        env:
+          CP2_REQUIRE_DATA: "1"
+        run: pytest

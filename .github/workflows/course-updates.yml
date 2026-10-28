@@ -1,0 +1,24 @@
+# Once a day, ask GitHub whether the course repo has moved past our pin (course_commit.txt).
+#
+# Why check instead of fetching automatically: utils_public.py holds diversity_score, the
+# objective we're graded on. If staff change it, an automatic fetch would silently change
+# what all our numbers mean. A failing run here sends an email, and then a person runs
+# `./setup_data.sh --update`, reads the diff, and decides.
+#
+# GitHub runs scheduled jobs, and offers the Actions tab's "Run workflow" button, only for
+# workflow files on the DEFAULT branch (main). Until this file is on main, neither works:
+# run ./setup_data.sh --check by hand.
+name: course-repo-updates
+
+on:
+  schedule:
+    - cron: "17 13 * * *"     # daily at 13:17 UTC, about 9 am in Boston
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the course repo with our pin
+        run: ./setup_data.sh --check

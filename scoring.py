@@ -32,8 +32,11 @@ Surprises
 * ``diversity()`` scores whatever grids you hand it, as if all were valid. To score a scenario
   where some fail, drop the failures first; that's how Stage 4's Monte Carlo uses it.
 * ``check_submission()`` is stricter than the course in one way: it rejects duplicate grids.
-  They're legal, but a duplicate's nearest neighbour is its twin at distance 0, so it can only
-  cost points.
+  The course allows them, but an identical copy enters a grid's 10 nearest at distance 0 and
+  pushes out the farthest of them. A grid submitted twice therefore loses at least a tenth of
+  its contribution (so does its twin), and a grid submitted 11 or more times contributes
+  nothing. Rejecting duplicates catches accidental copies. Stage 4 may revisit the rule: a
+  copy of a grid that is almost certainly valid could be worth more than a risky new grid.
 """
 
 from __future__ import annotations
@@ -83,7 +86,8 @@ def check_submission(arr):
         n_unique = len(np.unique(a.reshape(len(a), -1), axis=0))
         if n_unique < len(a):
             problems.append(
-                f"{len(a) - n_unique} duplicate grid(s); each would score 0"
+                f"{len(a) - n_unique} duplicate grid(s): allowed by the course, but"
+                " rejected here because copies lower each other's contribution"
             )
     if problems:
         raise ValueError("not a valid submission: " + "; ".join(problems))

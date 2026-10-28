@@ -56,7 +56,7 @@ def engineered_reference(grid):
         for start in cells:
             if at(start) != k or start in seen:
                 continue
-            queue, size = deque([start]), 0  # flood-fill one blob
+            queue, size = deque([start]), 0  # flood-fill one cluster
             seen.add(start)
             while queue:
                 r, c = queue.popleft()
@@ -72,8 +72,8 @@ def engineered_reference(grid):
                         queue.append(nb)
             sizes.append(size)
         mine = [p for p in cells if at(p) == k]
-        out[f"blobs {name}"] = len(sizes)
-        out[f"biggest blob {name}"] = max(sizes, default=0)
+        out[f"clusters {name}"] = len(sizes)
+        out[f"largest cluster {name}"] = max(sizes, default=0)
         out[f"border {name}"] = sum(1 for r, c in mine if r in (0, 6) or c in (0, 6))
         out[f"centre distance {name}"] = (
             sum(abs(r - 3) + abs(c - 3) for r, c in mine) / len(mine) if mine else 0.0

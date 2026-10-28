@@ -1,0 +1,15 @@
+# Slim environment for GitHub's test runs (Linux, no GPU). It has just what `pytest` needs:
+# no PyTorch, Jupyter or editor tools, so each run sets up in about a minute.
+# Day-to-day work uses environment.yml; keep the shared packages in step with it.
+name: ps2-ci
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - scikit-learn
+  - lightgbm
+  - matplotlib     # utils_public.py imports it
+  - pillow         # utils_public.py imports it
+  - pytest

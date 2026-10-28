@@ -1,12 +1,10 @@
 """The model scorecard: how often is a model right when it says a grid passes?
 
-Where this fits
----------------
-This is the *protocol* module. Everything about measuring models honestly lives here, and
+Everything about measuring models honestly lives here, and
 every later stage imports from it:
 
 * ``load_dev()``         The labels we're allowed to learn from. Lockbox labels come back as
-                         NaN ("missing"), so ordinary code physically can't see them (risk R13).
+                         NaN ("missing"), so ordinary code physically can't see them.
 * ``open_lockbox()``     The ONLY way to reach the lockbox labels. It refuses unless you confirm,
                          and appends every opening to docs/lockbox_log.md.
 * ``cv_splits()``        5-fold cross-validation, repeated 3 times with different shuffles.
@@ -16,11 +14,11 @@ every later stage imports from it:
 * ``scorecard()``        Out-of-fold predictions for every variant and advisor, and the numbers
                          we choose models by.
 
-Why not just R²? (README, "Accuracy or precision?") R² is the average error over the whole
-0–1 score range, and an error at 0.2 versus 0.3 never matters here: both fail. The scorecard
-leads with **approved at 98%**: how many dev grids a model can approve while 98% of its
-approvals truly score ≥ 0.75. Precision protects the score; the count is room to choose
-varied grids.
+Why not just R²? (docs/stage1_evaluation.md, "Model scorecard") R² is the average error over the whole
+0–1 rating range, and an error at 0.2 versus 0.3 never matters here: both fail. The scorecard
+leads with the **approval count at 98% precision**: the number of development-set grids a
+model can approve while at least 98% of its approvals are truly rated ≥ 0.75. Precision protects
+the score; the count is room to choose varied grids.
 
 Reads / writes
 --------------
@@ -34,17 +32,9 @@ How to run
     python validity.py                          # the full scorecard (~5-10 min first time, ~1 s after)
     python validity.py --variants gbm_engineered
     python validity.py --no-cache               # recompute everything from scratch
+    python validity.py --grid 12                # one grid's predictions against each advisor's cut-off
+    python validity.py --data                   # counts of which grids each advisor rated
 
-Surprises
----------
-* The lockbox recipe (seed 2156) is frozen. The planning probes respected it, and
-  tests/test_protocol.py checks its fingerprint so it can't silently change.
-* "Approved at 98%" picks its threshold on the same out-of-fold predictions it's measured on,
-  so it flatters every model a little, and equally. Good for comparing models; not a promise.
-* Featurizing the whole dev set *before* splitting is not leakage: a feature is a fixed formula
-  of one grid, with nothing learned from data. Anything that *is* learned, such as Ridge's
-  feature scaling, lives inside the model, so it's refit on each fold's training part.
-* Screening all 500k grids used to live here; in Stage 2 it moves to surrogates.py.
 """
 
 from __future__ import annotations
@@ -75,15 +65,22 @@ LOCKBOX_LOG = os.path.join(PS2_ROOT, "docs", "lockbox_log.md")
 PIN_FILE = os.path.join(PS2_ROOT, "course_commit.txt")
 
 ADVISORS = ("Wellness", "Tax", "Transportation", "Business")
-THRESHOLD = 0.75  # a grid counts only if every advisor scores it at least this
-TARGET_PRECISION = 0.98  # the plan's operating confidence, per advisor
+# A grid passes an advisor that rates it at least this; it counts only if all four pass.
+THRESHOLD = 0.75
+# Per-advisor precision used to compare models. 0.98 ** 4 ≈ 0.92: the chance a grid approved
+# for all four advisors is valid, if their errors are unrelated (docs/stage1_evaluation.md, "Why 98%").
+TARGET_PRECISION = 0.98
 LEVELS = (0.75, 0.80, 0.85)
-BAND = (0.6, 0.9)  # "near the cutoff": where errors flip pass and fail
+TRADEOFF_LEVELS = (0.90, 0.95, 0.98, 0.99)  # docs/stage1_evaluation.md, "Why 98%"
+BAND = (0.6, 0.9)  # "near the cutoff": where errors flip pass and fail. 
+                   # Reports one extra accuracy number, measured only on grids whose true rating is between the BAND values.     
 
 LOCKBOX_SEED = 2156
 LOCKBOX_SIZE = 1000  # per advisor
 CV_FOLDS = 5
-CV_REPEATS = 3
+CV_SEEDS = (0, 1, 2)  # one random seed per shuffle
+CV_REPEATS = len(CV_SEEDS)
+RIDGE_ALPHA = 1.0  # Ridge's penalty on large weights
 CACHE_SCHEMA = 1  # bump if the cache file layout changes
 MAX_VARIANTS_PER_ROLE = 6
 
@@ -209,14 +206,14 @@ def course_pin():
 
 
 def cv_splits(n, folds=CV_FOLDS, repeats=CV_REPEATS):
-    """Yield (repeat, fold, train_idx, val_idx) for repeated k-fold cross-validation.
+    """Yield (shuffle, fold, train_idx, val_idx) for repeated k-fold cross-validation.
 
-    Repeat r shuffles with seed r, so repeat 0 is exactly the split the planning probes used.
-    Repeating with fresh shuffles shows how much a score moves just from which grids land in
-    which fold. That's the "fold-to-fold noise" the plan's rules compare against.
+    Shuffle r assigns grids to folds with seed CV_SEEDS[r]; shuffle 0 is exactly the split the
+    planning experiments used. Running under several shuffles shows how much a result moves
+    just from which grids land in which fold: the noise threshold (docs/stage1_evaluation.md, "Shuffle procedure").
     """
     for r in range(repeats):
-        splitter = KFold(folds, shuffle=True, random_state=r)
+        splitter = KFold(folds, shuffle=True, random_state=CV_SEEDS[r])
         for f, (train, val) in enumerate(splitter.split(np.arange(n))):
             yield r, f, train, val
 
@@ -268,8 +265,8 @@ class Variant:
             if self.features == "engineered":
                 # Engineered features live on different scales (counts vs distances). The
                 # scaler is part of the model, so it's refit on each training fold only.
-                return make_pipeline(StandardScaler(), Ridge(alpha=1.0))
-            return Ridge(alpha=1.0)  # one-hot columns are already all 0/1
+                return make_pipeline(StandardScaler(), Ridge(alpha=RIDGE_ALPHA))
+            return Ridge(alpha=RIDGE_ALPHA)  # one-hot columns are already all 0/1
         import lightgbm as lgb  # imported here so the tests needn't pay for it
 
         return lgb.LGBMRegressor(**GBM_PARAMS)
@@ -277,12 +274,16 @@ class Variant:
     def spec(self):
         """Everything that changes this variant's predictions, for the cache key."""
         spec = {"features": self.features, "model": self.model, "augment": self.augment}
+        if self.model == "ridge":
+            spec.update(ridge_alpha=RIDGE_ALPHA, scaled=self.features == "engineered")
         if self.model == "gbm":
             import lightgbm as lgb
 
             spec.update(gbm_params=GBM_PARAMS, lightgbm=lgb.__version__)
         if self.features == "engineered":
             spec["feature_version"] = features.FEATURE_VERSION
+        else:
+            spec["onehot_version"] = features.ONEHOT_VERSION
         spec["sklearn"] = sklearn.__version__
         return spec
 
@@ -296,8 +297,10 @@ VARIANTS = {
     "gbm_engineered": Variant("engineered", "gbm", role="main"),
 }
 
-# R² from the dev-only planning probes (repeat 0, 2026-10-25). Stage 1's exit check compares
-# against these: the scorecard must land within ±0.01.
+# R² from the planning experiments (development set only, 2026-10-25): one-off scripts run
+# before the Stage 1 scorecard was added to this module. They used one shuffle, with the same
+# folds as shuffle 0 here. Stage 1's completion check requires the scorecard's three-shuffle
+# mean to match them within 0.01 (docs/decisions.md).
 PLANNING_R2 = {
     "ridge_onehot": (0.483, 0.758, 0.121, 0.483),
     "gbm_onehot": (0.504, 0.707, 0.291, 0.500),
@@ -323,7 +326,7 @@ def cache_key(variant, y, rows):
         "schema": CACHE_SCHEMA,
         "variant": variant.spec(),
         "folds": CV_FOLDS,
-        "repeats": CV_REPEATS,
+        "cv_seeds": list(CV_SEEDS),
         "course_pin": course_pin(),
         "lockbox_seed": LOCKBOX_SEED,
         "rows": hashlib.sha256(
@@ -372,10 +375,11 @@ def out_of_fold(name, grids, y, rows, use_cache=True):
 def approved_at(pred, y, target=TARGET_PRECISION):
     """How many grids can we approve, highest predictions first, staying `target` precise?
 
-    Walk down the grids from most to least confident. After each one, ask what fraction of
-    those approved so far truly score ≥ 0.75. Return the largest count where that fraction is
-    still ≥ target, the prediction you'd use as the cut-off, and how many of the approved
-    grids truly pass. (0, inf, 0) if no count reaches the target.
+    Walk down the grids from the highest predicted rating to the lowest. After each one, ask
+    what fraction of those approved so far are truly rated ≥ 0.75. Return the largest count
+    where that fraction is still ≥ target, the approval cut-off (the predicted rating of the
+    last grid approved), and how many of the approved grids truly pass. (0, inf, 0) if no
+    count reaches the target.
     """
     order = np.argsort(-pred, kind="stable")
     hits = np.cumsum(y[order] >= THRESHOLD)
@@ -389,14 +393,15 @@ def approved_at(pred, y, target=TARGET_PRECISION):
 
 @dataclass
 class Score:
-    """One variant on one advisor, averaged over the CV repeats."""
+    """One variant on one advisor; each value is the mean over the three shuffles."""
 
-    r2: float  # share of score variation explained (1 = perfect)
-    r2_fold_sd: float  # how much R² moves fold to fold: the noise yardstick
-    band_rmse: float  # typical error for grids truly scoring 0.6–0.9
-    approved: float  # approved at 98%: grids approved while 98% precise
-    cutoff: float  # the prediction cut-off that achieves it
-    recall: float  # share of all truly-passing grids that those approvals catch
+    r2: float  # 1 - MSE / variance of the true ratings (1 = perfect, 0 = predicting the mean)
+    r2_fold_sd: float  # s.d. of the 15 single-fold R² values: the R² noise threshold
+    band_rmse: float  # RMSE for grids with true rating 0.6–0.9
+    approved: float  # approval count at 98% precision
+    approved_per_shuffle: tuple  # the three per-shuffle counts behind that mean
+    cutoff: float  # approval cut-off: predicted rating of the last grid approved
+    recall: float  # share of the advisor's truly passing grids that are approved
     precision_at: dict  # level -> (grids predicted ≥ level, fraction truly ≥ 0.75)
 
 
@@ -421,6 +426,7 @@ def score(preds, y):
             np.mean([np.sqrt(np.mean((p[band] - y[band]) ** 2)) for p in preds])
         ),
         approved=float(np.mean([k for k, _, _ in per_repeat])),
+        approved_per_shuffle=tuple(int(k) for k, _, _ in per_repeat),
         cutoff=float(np.mean([c for _, c, _ in per_repeat])),
         recall=float(np.mean([hits for _, _, hits in per_repeat])) / passing,
         precision_at=precision_at,
@@ -447,66 +453,256 @@ def scorecard(names=None, use_cache=True, verbose=True):
 
 
 def print_scorecard(results):
-    """The tables: approved at 98% first (what we choose by), then R² and error near the cutoff."""
-    head = "".join(f"{a:>16}" for a in ADVISORS)
+    """The scorecard tables in docs/stage1_evaluation.md: approval count at 98% precision, then R² and RMSE."""
+    head = "".join(f"{a:>22}" for a in ADVISORS)
     some = next(iter(results.values()))
     n_dev = len(next(iter(some.values()))["y"])
     print(
-        f"\nApproved at 98%: dev grids approved while ≥98% truly score ≥ 0.75 (of ~{n_dev:,})"
+        f"\nApproval count at 98% precision, of {n_dev:,} development-set grids per advisor:"
+        "\nmean over the 3 shuffles [the 3 per-shuffle counts]"
     )
     print(f"  {'variant':<18}{head}")
     for name, by_adv in results.items():
-        cells = "".join(
-            f"{by_adv[a]['score'].approved:>9.0f} ({by_adv[a]['score'].recall:>3.0%})"
-            for a in ADVISORS
-        )
+        cells = ""
+        for a in ADVISORS:
+            sc = by_adv[a]["score"]
+            each = "/".join(str(k) for k in sc.approved_per_shuffle)
+            cells += f"{sc.approved:>8.0f} [{each:>12}]"
         print(f"  {name:<18}{cells}")
     print(
-        "  (in brackets: the share of all truly-passing dev grids those approvals catch)"
+        "\nApproval cut-off: the predicted rating of the last grid approved at 98% precision,"
+        "\nmean over the 3 shuffles. A grid is approved for an advisor at or above it."
     )
-
-    print("\nR² (1.0 = perfect) ± how much it moves fold to fold (the noise yardstick)")
     print(f"  {'variant':<18}{head}")
     for name, by_adv in results.items():
-        cells = "".join(
-            f"{by_adv[a]['score'].r2:>10.3f} ±{by_adv[a]['score'].r2_fold_sd:.3f}"
-            for a in ADVISORS
-        )
+        cells = ""
+        for a in ADVISORS:
+            cut = by_adv[a]["score"].cutoff
+            cells += f"{cut:>22.3f}" if np.isfinite(cut) else f"{'none':>22}"
         print(f"  {name:<18}{cells}")
-
-    print("\nTypical error for grids truly scoring 0.6–0.9 (lower is better)")
+    print(
+        "\nShare of the advisor's truly passing grids (true rating >= 0.75) that are approved"
+    )
     print(f"  {'variant':<18}{head}")
     for name, by_adv in results.items():
         print(
             f"  {name:<18}"
-            + "".join(f"{by_adv[a]['score'].band_rmse:>16.3f}" for a in ADVISORS)
+            + "".join(f"{by_adv[a]['score'].recall:>22.0%}" for a in ADVISORS)
         )
 
-    worst = max(
-        abs(by_adv[a]["score"].r2 - PLANNING_R2[name][i])
+    print(
+        "\nR² (1 = perfect, 0 = no better than predicting the mean rating): mean over the"
+        "\n3 shuffles, each on all out-of-fold predictions ± s.d. of the 15 single-fold R²"
+        " values (the R² noise threshold)"
+    )
+    print(f"  {'variant':<18}{head}")
+    for name, by_adv in results.items():
+        cells = "".join(
+            f"{by_adv[a]['score'].r2:>15.3f} ±{by_adv[a]['score'].r2_fold_sd:.3f}"
+            for a in ADVISORS
+        )
+        print(f"  {name:<18}{cells}")
+
+    print("\nRMSE for grids with true rating 0.6–0.9 (lower is better)")
+    print(f"  {'variant':<18}{head}")
+    for name, by_adv in results.items():
+        print(
+            f"  {name:<18}"
+            + "".join(f"{by_adv[a]['score'].band_rmse:>22.3f}" for a in ADVISORS)
+        )
+
+    diffs = [
+        (abs(by_adv[a]["score"].r2 - PLANNING_R2[name][i]), name, a)
         for name, by_adv in results.items()
         if name in PLANNING_R2
         for i, a in enumerate(ADVISORS)
-    )
+    ]
+    if not diffs:
+        return
+    worst, worst_name, worst_advisor = max(diffs)
     verdict = "PASS" if worst <= 0.01 else "CHECK"
     print(
-        f"\nExit check (plan, Stage 1): largest |ΔR²| vs planning = {worst:.3f} -> {verdict} "
-        f"(must be ≤ 0.01)"
+        "\nStage 1 completion check: largest difference between the three-shuffle mean R² and"
+        f"\nthe planning experiments' R² (first shuffle only) = {worst:.4f}"
+        f" ({worst_name}, {worst_advisor}) -> {verdict} (tolerance 0.01)"
+    )
+
+
+def precision_tradeoff(results, name, levels=TRADEOFF_LEVELS):
+    """Approval count at several precision levels, for one variant (docs/stage1_evaluation.md, "Why 98%").
+
+    For each per-advisor precision level p, returns (p, valid_all_four, {advisor: count}):
+    the approval count is averaged over the three shuffles, exactly as in the scorecard, and
+    valid_all_four = p ** 4 is the chance a grid approved for all four advisors is valid,
+    *if* two assumptions hold: the four models' errors are unrelated, and the precision
+    measured here holds for the grids actually submitted (both unverified; risks R1 and R4
+    in the plan).
+    """
+    rows = []
+    for level in levels:
+        counts = {
+            adv: float(np.mean([approved_at(p, r["y"], level)[0] for p in r["preds"]]))
+            for adv, r in results[name].items()
+        }
+        rows.append((level, level ** len(counts), counts))
+    return rows
+
+
+def print_precision_tradeoff(rows, name):
+    """The "Why 98%" table of docs/stage1_evaluation.md, as printed by `python validity.py`."""
+    advisors = list(rows[0][2])
+    print(f"\nPrecision trade-off for {name} (docs/stage1_evaluation.md, 'Why 98%')")
+    print(
+        f"  {'precision':>9} {'valid, all 4':>13} {'invalid/100':>12}"
+        + "".join(f"{a:>16}" for a in advisors)
+    )
+    for level, all_four, counts in rows:
+        print(
+            f"  {level:>9.0%} {all_four:>13.0%} {100 * (1 - all_four):>12.0f}"
+            + "".join(f"{counts[a]:>16,.0f}" for a in advisors)
+        )
+    print(
+        "  ('valid, all 4' = precision ** 4. It assumes the four models' errors are unrelated"
+        "\n  and that this precision holds for the grids submitted.)"
+    )
+
+
+def grid_report(index, name="gbm_engineered"):
+    """One grid's predicted rating for every advisor, against that advisor's approval cut-off.
+
+    Returns [(advisor, predicted, cutoff, true_or_None)]. `cutoff` is the variant's approval
+    cut-off for that advisor, exactly as in the scorecard (mean over the three shuffles).
+    Where the advisor rated the grid in the development set, the prediction is out of fold
+    (the mean over the three shuffles of predictions from models that did not train on it), so
+    it can be compared with the true rating. Otherwise no true rating exists in the data
+    available to us, and a model trained on that advisor's whole development set makes the
+    prediction. Test-set ratings are never shown: load_dev() hides them, so a grid sealed in
+    the test set for an advisor is reported like an unrated one. Uses the scorecard's cached
+    predictions, computing them first if they are missing.
+    """
+    grids, dev = load_dev()
+    variant = VARIANTS[name]
+    x = variant.featurize(grids[index][None])
+    report = []
+    for a, advisor in enumerate(ADVISORS):
+        rows = np.flatnonzero(~np.isnan(dev[:, a]))
+        y = dev[rows, a]
+        preds = out_of_fold(name, grids[rows], y, rows)
+        cutoff = float(np.mean([approved_at(p, y)[1] for p in preds]))
+        if not np.isnan(dev[index, a]):
+            pos = int(np.searchsorted(rows, index))
+            pred, true = float(preds[:, pos].mean()), float(dev[index, a])
+        else:
+            model = variant.make_model()
+            model.fit(variant.featurize(grids[rows]), y)
+            pred, true = float(model.predict(x)[0]), None
+        report.append((advisor, pred, cutoff, true))
+    return report
+
+
+def print_grid_report(index, name="gbm_engineered"):
+    print(
+        f"Grid {index}: predicted rating for each advisor ({name}),"
+        "\nagainst that advisor's approval cut-off at 98% precision"
+    )
+    report = grid_report(index, name)
+    for advisor, pred, cutoff, true in report:
+        verdict = "approved" if pred >= cutoff else "not approved"
+        truth = (
+            f"true rating {true:.3f}"
+            if true is not None
+            else "no development-set rating (unrated, or sealed in the test set)"
+        )
+        print(
+            f"  {advisor:<15} predicted {pred:.3f}, cut-off {cutoff:.3f}:"
+            f" {verdict:<12}   {truth}"
+        )
+    refused = [advisor for advisor, pred, cutoff, _ in report if pred < cutoff]
+    print(
+        "  Predicted valid (approved for all four advisors): "
+        + ("yes" if not refused else "no; not approved for " + ", ".join(refused))
+    )
+
+
+def data_summary():
+    """Counts describing the course data. Reads only which grids are rated, never a rating.
+
+    Returns a dict: the number of grids; ratings per advisor; the number of grids rated by
+    0, 1, 2, 3 and 4 advisors; the number rated by both advisors of each pair; and the
+    test-set size per advisor.
+    """
+    grids, ratings = _load_raw()
+    labelled = ~np.isnan(ratings)
+    pairs = {
+        (ADVISORS[i], ADVISORS[j]): int((labelled[:, i] & labelled[:, j]).sum())
+        for i in range(len(ADVISORS))
+        for j in range(i + 1, len(ADVISORS))
+    }
+    return {
+        "grids": len(grids),
+        "ratings_per_advisor": dict(zip(ADVISORS, labelled.sum(0).tolist())),
+        "grids_by_raters": np.bincount(labelled.sum(1), minlength=5).tolist(),
+        "pairs": pairs,
+        "test_set_per_advisor": dict(
+            zip(ADVISORS, lockbox_mask(ratings).sum(0).tolist())
+        ),
+    }
+
+
+def print_data_summary():
+    s = data_summary()
+    n, per = s["grids"], s["ratings_per_advisor"]
+    print("Course data: which grids each advisor rated (no rating values are read)")
+    print(f"  grids in the dataset: {n:,}")
+    print("  ratings per advisor: " + ", ".join(f"{a} {k:,}" for a, k in per.items()))
+    print(
+        "  grids by number of advisors who rated them: "
+        + ", ".join(f"{i}: {k:,}" for i, k in enumerate(s["grids_by_raters"]))
+    )
+    # If each advisor's grids were an independent random sample of the dataset, two advisors
+    # would share about k1 * k2 / n grids: 50 for 5,000 each out of 500,000.
+    print(
+        "  grids rated by both advisors of a pair (expected if the samples were independent):"
+    )
+    for (a, b), shared in s["pairs"].items():
+        print(f"    {a}–{b}: {shared} ({per[a] * per[b] / n:.0f})")
+    print(
+        "  test set (lockbox) per advisor: "
+        + ", ".join(f"{a} {k:,}" for a, k in s["test_set_per_advisor"].items())
+        + "; it holds every grid rated by two or more advisors"
     )
 
 
 def main():
-    ap = argparse.ArgumentParser(description="The model scorecard (dev set only).")
+    ap = argparse.ArgumentParser(
+        description="The model scorecard (development set only)."
+    )
     ap.add_argument("--variants", nargs="+", choices=list(VARIANTS), default=None)
     ap.add_argument(
         "--no-cache", action="store_true", help="recompute every prediction"
     )
-    args = ap.parse_args()
-    print(
-        f"Scorecard: {CV_FOLDS}-fold cross-validation × {CV_REPEATS} repeats, dev set only "
-        f"(lockbox untouched)"
+    ap.add_argument(
+        "--grid", type=int, help="instead: show one grid's predictions and cut-offs"
     )
-    print_scorecard(scorecard(args.variants, use_cache=not args.no_cache))
+    ap.add_argument(
+        "--data", action="store_true", help="instead: count which grids are rated"
+    )
+    args = ap.parse_args()
+    if args.grid is not None:
+        print_grid_report(args.grid)
+        return
+    if args.data:
+        print_data_summary()
+        return
+    print(
+        f"Scorecard: {CV_FOLDS}-fold cross-validation × {CV_REPEATS} shuffles, "
+        "development set only (test set untouched)"
+    )
+    results = scorecard(args.variants, use_cache=not args.no_cache)
+    print_scorecard(results)
+    for name, variant in VARIANTS.items():
+        if variant.role == "main" and name in results:
+            print_precision_tradeoff(precision_tradeoff(results, name), name)
 
 
 if __name__ == "__main__":

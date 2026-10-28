@@ -10,12 +10,12 @@ Every model in this project sees a grid through one of the two functions here:
   of each district there is, what sits next to what, how far apart things are, how clumped
   they are, and edge versus centre.
 
-The 75 answer five questions (README, "Stage 1"):
+The 75 answer five questions (docs/stage1_evaluation.md, "Features"):
 
     counts        5   How much of each district?
     adjacency    30   What sits next to what? (side-by-side and diagonal, every district pair)
     distance     20   On average, how far is a cell of X from the nearest Y?
-    clusters     10   How many separate blobs of each district, and how big is the biggest?
+    clusters     10   How many separate clusters of each district, and how big is the largest?
     edge/centre  10   How many sit on the border, and how far from the middle on average?
 
 Every engineered feature is unchanged by the 8 rotations and mirrors of a grid (checked in
@@ -44,7 +44,7 @@ Surprises
 * Distance is in grid steps, counting only up/down/left/right moves ("Manhattan" distance).
   If a grid has no district Y at all, distance-to-Y is 13. That's one more than the farthest
   two cells can be on a 7x7 grid (12), so "absent" reads as "very far".
-* Blobs only join side-by-side neighbours. Two cells touching at a corner are separate blobs.
+* Clusters only join side-by-side neighbours. Two cells touching at a corner are separate clusters.
 * Bump FEATURE_VERSION whenever a definition changes. It's part of validity.py's cache key,
   so stale predictions can never be reused (risk R14).
 """
@@ -60,6 +60,8 @@ SIZE = 7
 
 # Part of validity.py's cache key. Change it whenever any feature definition changes.
 FEATURE_VERSION = "engineered-75-v1"
+# Likewise for the one-hot encoding (also part of the cache key).
+ONEHOT_VERSION = "onehot-245-v1"
 
 ABSENT_DISTANCE = 13.0  # one more than the 12 steps between opposite corners
 
@@ -104,7 +106,7 @@ def _pair_count(a, b, i, j):
 
 
 def _blobs(grids, k):
-    """Per grid: how many separate blobs of district k, and the size of the biggest."""
+    """Per grid: how many separate clusters of district k, and the size of the largest."""
     n = len(grids)
     labels, _ = ndimage.label(grids == k, structure=_JOIN_SIDE_BY_SIDE)
     flat = labels.reshape(n, -1)
@@ -169,8 +171,8 @@ def _build(grids):
     for k, name in enumerate(DISTRICTS):
         count, biggest = _blobs(grids, k)
         n_k = is_k[k].sum(1)
-        out.append((f"blobs {name}", count))
-        out.append((f"biggest blob {name}", biggest))
+        out.append((f"clusters {name}", count))
+        out.append((f"largest cluster {name}", biggest))
         out.append((f"border {name}", (is_k[k] & _ON_BORDER).sum(1)))
         out.append(
             (
@@ -201,7 +203,7 @@ FEATURE_GROUPS = {
     "clusters": [
         i
         for i, n in enumerate(ENGINEERED_NAMES)
-        if n.startswith(("blobs ", "biggest blob "))
+        if n.startswith(("clusters ", "largest cluster "))
     ],
     "edge/centre": [
         i
