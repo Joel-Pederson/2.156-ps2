@@ -19,9 +19,11 @@ The 75 answer five questions (docs/stage1_evaluation.md, "Features"):
     edge/centre  10   How many sit on the border, and how far from the middle on average?
 
 Every engineered feature is unchanged by the 8 rotations and mirrors of a grid (checked in
-tests/test_features.py). That's deliberate: the planning probes found the advisors appear not
-to care about orientation. If Stage 2's position test finds otherwise, that advisor gets extra
-position-aware features on top; these 75 stay as they are.
+tests/test_features.py). That's deliberate: the planning experiments suggested the advisors
+don't care about orientation. The 26 October audit found Wellness, and weakly Tax, may
+(docs/decisions.md); Stage 2's position test (rule 2.2) settles it. If an advisor does, it gets
+no augmentation and no rotated copies. Position-aware features compete in Stage 2's search for
+every advisor either way; these 75 stay as they are.
 
 This module also owns the 8 symmetries themselves (``orientations``, ``augment``), because
 "rotate a grid" and "what stays the same when you rotate it" belong together.
@@ -45,8 +47,10 @@ Surprises
   If a grid has no district Y at all, distance-to-Y is 13. That's one more than the farthest
   two cells can be on a 7x7 grid (12), so "absent" reads as "very far".
 * Clusters only join side-by-side neighbours. Two cells touching at a corner are separate clusters.
-* Bump FEATURE_VERSION whenever a definition changes. It's part of validity.py's cache key,
-  so stale predictions can never be reused (risk R14).
+* Bump FEATURE_VERSION whenever a definition changes, as a record. validity.py's cache key also
+  hashes the feature values themselves, so a forgotten bump can't reuse stale predictions
+  (risk R14 in docs/plan.md).
+* An empty batch, shape (0, 7, 7), gives an empty (0, 245) or (0, 75) array.
 """
 
 from __future__ import annotations
@@ -88,7 +92,7 @@ def onehot(grids):
     """(n, 7, 7) district codes -> (n, 245) float32 of 0s and 1s."""
     grids = np.asarray(grids)
     is_district = np.arange(N_DISTRICTS, dtype=np.int8) == grids[..., None]
-    return is_district.reshape(len(grids), -1).astype(np.float32)
+    return is_district.reshape(len(grids), SIZE * SIZE * N_DISTRICTS).astype(np.float32)
 
 
 def engineered(grids):
@@ -109,14 +113,14 @@ def _blobs(grids, k):
     """Per grid: how many separate clusters of district k, and the size of the largest."""
     n = len(grids)
     labels, _ = ndimage.label(grids == k, structure=_JOIN_SIDE_BY_SIDE)
-    flat = labels.reshape(n, -1)
+    flat = labels.reshape(n, SIZE * SIZE)
     grid_of_cell, cell = np.nonzero(flat)
     blob_of_cell = flat[grid_of_cell, cell]
     blob_sizes = np.bincount(labels.ravel())
     biggest = np.zeros(n)
     np.maximum.at(biggest, grid_of_cell, blob_sizes[blob_of_cell])
     # Each distinct (grid, blob) pair is one blob; count them per grid.
-    width = int(labels.max()) + 1
+    width = int(labels.max()) + 1 if labels.size else 1
     one_per_blob = np.unique(grid_of_cell.astype(np.int64) * width + blob_of_cell)
     count = np.bincount(one_per_blob // width, minlength=n).astype(float)
     return count, biggest
@@ -125,7 +129,7 @@ def _blobs(grids, k):
 def _build(grids):
     """Every engineered feature as (name, column). The single source of the column order."""
     n = len(grids)
-    flat = grids.reshape(n, -1)
+    flat = grids.reshape(n, SIZE * SIZE)
     is_k = [flat == k for k in range(N_DISTRICTS)]
     out = []
 

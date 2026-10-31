@@ -74,17 +74,17 @@ Each advisor's 5,000 rated grids are split by the same procedure (Figure 1):
   - Test results are never used to choose between alternatives.
   - In this project's own code (`validity.py`, `features.py`, `scoring.py`, `plots.py`,
     `make_figures.py`, `analysis.ipynb` and `tests/`), the test-set ratings are reached only
-    through `validity.open_lockbox()`. It requires
-    explicit confirmation and records every opening (time, commit and reason) in
+    through `validity.open_lockbox()`. It requires explicit confirmation and a fully committed
+    repository, and records every opening (time, commit, calling script and reason) in
     `docs/lockbox_log.md`.
   - The standard loader, `validity.load_dev()`, returns test-set ratings as NaN ("not a number",
     the marker for a missing value). The only other code that reads the raw data
     (`python validity.py --data` and the leakage tests) reads which grids are rated, never a
     rating.
-  - **Exception: the starter notebook.** It loads every rating directly, test set included, and
-    trains on all of them. Its saved outputs come from a run on 25 October, before the test set
-    was set aside; that run is listed in the decision log's disclosure. Re-running its model cells
-    would use test-set ratings with no log entry, so they must not be re-run.
+  - **The starter notebook.** Its saved outputs come from a run on 25 October, before the test set
+    was set aside, which used every rating; that run is listed in the decision log's disclosure.
+    Since 28 October its ratings cell hides the test-set ratings (with `validity.lockbox_mask()`)
+    whenever it runs locally, so re-running it is safe.
   - All 286 grids rated by two or more advisors are assigned here. They are the only grids with two
     true ratings, so they are the only way to check whether two models are wrong on the *same* grid.
     That check is small: 36–64 grids per pair of advisors, none rated by all four. The dependence
@@ -131,7 +131,7 @@ three independent shuffles (seeds 0, 1 and 2; Figure 2):
   fold's difficulty. It is not the uncertainty of a *difference* between two models scored on the
   same folds: for two similar models the difference varies much less, so the threshold is too
   strict, and for dissimilar models it can be too lenient. Stage 2 compares close variants by their
-  paired, fold-by-fold differences instead (`docs/decisions.md`, 26 October).
+  paired, fold-by-fold differences instead (`docs/decisions.md`, 28 October, Stage 2 protocol).
 
 ![Figure 2: three shuffles of ten example grids into five folds](figures/stage1_shuffles.png)
 
@@ -316,7 +316,7 @@ that estimate, each only in part:
 - **The development set, for what matters more.** Whether one model's precision drops on grids that
   another advisor's model rates highly needs only one true rating per grid. It can be measured on
   the development set, by applying each model to the other advisors' rated grids, with far more
-  grids than the test set offers. Stage 2 does this (`docs/decisions.md`, 26 October).
+  grids than the test set offers. Stage 2 does this (rule 2.8 in `docs/decisions.md`).
 - **The scoreboard.**
   - It rates every submitted grid with all four advisors. It is expected to report only the total
     score; it has not been released yet.
@@ -409,8 +409,9 @@ shuffles' approval counts.
   The 92% holds only if that precision carries over to the grids actually submitted, and two things
   could break it:
   - The submitted grids are those approved by all four models, not a random sample of one model's
-    approvals, and a model's precision on that subset may be lower. The test-set grids rated by two
-    or more advisors give weak evidence on this (rule 2.8).
+    approvals, and a model's precision on that subset may be lower. Rule 2.8 measures this on the
+    development set before the test set is opened; the test-set grids rated by two or more advisors
+    add a small supplementary check.
   - Designed grids differ from the dataset. The caveat above already makes the 98% somewhat
     optimistic for dataset grids. Stage 3 tests the models on designs.
   - The scoreboard measures the combined result, but cannot show which of these caused a
@@ -452,7 +453,8 @@ predicted ratings must be.
   - It sets the R² noise threshold.
   - It sets the Stage 1 completion check: the scorecard's R² values must match the planning
     experiments' to within 0.01.
-  - It decides rule 2.2 in `docs/decisions.md` (whether position-dependent features help).
+  - It decided rule 2.2 (whether position-dependent features help) until 28 October; the revised
+    rule compares errors fold by fold instead (`docs/decisions.md`).
 
 **Results.**
 
@@ -516,7 +518,7 @@ and predicted-versus-true plots for each advisor (notebook Figures 6–7).
 | Figures 1–4, and the counts quoted from Figure 4 | `python make_figures.py` (Figure 4 uses the saved predictions from `python validity.py`) |
 | About ten co-rated grids approved for both advisors of their pair | The pair counts from `python validity.py --data` and the approval counts above, multiplied as shown under "How the joint estimate is tested" |
 | Cost of one invalid grid (0.0064) | The starter notebook's Scoring Examples (Case 3) |
-| R² change from adding the one-hot inputs (−0.003 to +0.004) | A one-off planning script, not in the repository; recorded in `docs/decisions.md` (25 October). Stage 2's rule 2.2 test will reproduce it |
+| R² change from adding the one-hot inputs (−0.003 to +0.004) | A one-off planning script, not in the repository; recorded in `docs/decisions.md` (25 October). Stage 2's harness reproduces it when it compares rule 2.2's true-orientation arm with the incumbent |
 | Scoreboard rules (five submissions per day per group) and the deadline | The course Canvas page: external, not in the repository |
 | Audit observations quoted in words (orientation, per-grid pass rates, the random-sample checks) | The 26 October audit, recorded with its numbers in `docs/decisions.md`; its scripts are not yet in the repository |
 | Planning-experiment R² values (completion check) | One-off exploratory scripts, run before the Stage 1 scorecard was added to `validity.py`; recorded in `docs/decisions.md`. `python validity.py` reproduces the four Ridge regression and GBM rows to within 0.0052 |
@@ -589,9 +591,9 @@ The course's ratings file is also named `scores.npy`. Its contents are what thes
 | `./setup_data.sh --check` | Asks GitHub for the course repository's latest commit and compares it with the pin. Exit code 0 means up to date, 1 means the course repository has moved, 2 means GitHub could not be reached | Nothing |
 | `./setup_data.sh --update` | Fetches the latest commit, checks it out, lists the changed files (showing any change to `utils_public.py` in full) and records the new pin | `data/cp2-repo/`, `course_commit.txt` |
 
-- **Run the plain command before `--update`.** The comparison needs the pinned commit on disk. On a
-  fresh copy of the data, `--update` currently reports a false "utils_public.py CHANGED" and moves
-  the pin anyway.
+- **A broken pin file stops every mode.** If `course_commit.txt` is missing or holds no valid
+  40-character commit hash, the script says so and exits with code 3, so 1 keeps meaning "the
+  course repository has moved".
 - **The starter notebook can bypass the pin.** If `data/cp2-repo/` is missing, the first cell of
   `starter_notebook.ipynb` downloads the course repository's latest commit instead. Running
   `./setup_data.sh` afterwards checks out the pinned commit again, and `tests/test_pin.py` fails
@@ -614,11 +616,11 @@ main()
 │  └─ for each of the 4 models × 4 advisors:
 │     ├─ (selects this advisor's development set: 4,000 grids and their ratings)
 │     ├─ out_of_fold()               → predictions: 3 shuffles × 4,000 grids
-│     │  ├─ cache_key()              a fingerprint of the settings listed below the diagram
+│     │  ├─ Variant.featurize()      → features.onehot()       4,000 × 245
+│     │  │                             or features.engineered() 4,000 × 75
+│     │  ├─ cache_key()              a fingerprint of those inputs and the settings listed below
 │     │  ├─ saved under that fingerprint in data/cache/oof/?   yes → load them; skip the rest
 │     │  └─ otherwise:
-│     │     ├─ Variant.featurize()   → features.onehot()       4,000 × 245
-│     │     │                          or features.engineered() 4,000 × 75
 │     │     ├─ cv_splits()           15 rounds: 3 shuffles (seeds 0, 1, 2) × 5 folds. In each round,
 │     │     │                        Variant.make_model() builds a fresh model (Ridge regression or
 │     │     │                        LightGBM's GBM), trains it on 3,200 grids and predicts the other 800
@@ -637,28 +639,27 @@ main()
 ```
 
 - **Saved predictions.** The fingerprint (`cache_key()`) covers:
+  - the grids themselves and the model inputs built from them, so editing a feature definition
+    changes the fingerprint even if no version label was changed;
   - which grids were used (their row numbers among the 500,000) and their ratings;
-  - the model, its inputs and settings (`Variant.spec()`: the Ridge penalty or the GBM settings,
-    and the feature-definition version label);
-  - the scikit-learn version, and LightGBM's for GBM models;
+  - the model and its settings (`Variant.spec()`: the Ridge penalty or the GBM settings, and the
+    feature-definition version label);
+  - the NumPy, SciPy and scikit-learn versions, and LightGBM's for GBM models;
   - the number of folds and the shuffle seeds;
   - the test-set seed;
   - the course commit (`course_pin()`, read from `course_commit.txt`).
 
   Changing any of these forces a fresh computation. The first full run takes about 8 minutes;
   later runs load the saved predictions in a few seconds.
-- **What the fingerprint does not cover.** Three gaps can let outdated predictions be reused
-  silently:
-  - *Feature edits.* The feature-definition versions (`features.FEATURE_VERSION` and
-    `features.ONEHOT_VERSION`) are labels set by hand. Editing a feature without changing its
-    label reuses the old predictions.
-  - *Grid contents.* Only the grids' row numbers are recorded. Code that passes altered grids
-    (rotated ones, for example) under the same row numbers gets the original grids' predictions.
-  - *NumPy and SciPy versions* are not recorded.
-
-  After any such change, run with `--no-cache` or delete `data/cache/oof/`.
+- **What the fingerprint does not cover.** Edits to the code that leave every setting unchanged:
+  `Variant.make_model()`, the training loop in `out_of_fold()`, `cv_splits()` beyond its fold count
+  and seeds, and, for a model declared with augmentation, `fold_data()`, `features.augment()` and
+  the orientations it uses (`features.orientations()`, `features.SYMMETRIES`). Nor does it record
+  the Python version, which `environment.yml` pins. After such an edit, run with `--no-cache` or
+  delete `data/cache/oof/`.
 - **Augmentation path.** `fold_data()` and `features.augment()` are used only by models declared
-  with augmentation. No Stage 1 model uses it, but the leakage tests exercise that path.
+  with augmentation. No Stage 1 model uses it, but the leakage tests exercise that path, including
+  `out_of_fold()` with augmentation.
 
 Other ways to run `validity.py`:
 
@@ -672,10 +673,12 @@ Other ways to run `validity.py`:
 **No command opens the test set yet.**
 - `open_lockbox()` is the only sanctioned route to the test-set ratings. The private `_load_raw()`
   also holds them, but its callers read only which grids are rated.
-- Stage 2 opens it once, with `confirm=True`.
-- Each confirmed opening appends a line (time, commit and reason) to `docs/lockbox_log.md`,
-  creating the file the first time.
-- A refused call, like the one in `tests/test_protocol.py`, writes nothing.
+- Stage 2 opens it once, with `confirm=True`, from a committed grading script. It refuses while git
+  shows anything uncommitted in the repository, untracked files included, or if the folder has no
+  repository of its own (rule 2.7).
+- Each confirmed opening appends a line (time, full commit hash, calling script and reason) to
+  `docs/lockbox_log.md`, creating the file the first time.
+- A refused call, like those in `tests/test_protocol.py`, loads no rating and writes nothing.
 
 #### ③ `python make_figures.py`: the documentation figures
 
@@ -713,14 +716,14 @@ Each figure is saved by `_save()` into `docs/figures/` at 150 dpi.
 
 | Command or file | What it checks | Code it exercises |
 |---|---|---|
-| `pytest`: `tests/test_features.py` | The features | `features.engineered()`, compared against the slow, independent `tests/reference_features.py` and checked to be unchanged under all 8 `orientations()`; `onehot()`, checked by rebuilding each grid from it; `augment()`, checked to keep each copy with its own grid's rating |
-| `tests/test_protocol.py` | The data split, leakage and saved predictions | `validity._load_raw()` (which grids are rated only), `lockbox_mask()`, `lockbox_fingerprint()`, `load_dev()`, `data_summary()`, `cv_splits()`, `fold_data()`, `cache_key()`, `open_lockbox()` (its refusal only) and `VARIANTS`; `features.orientations()` |
-| `tests/test_metrics.py` | The comparison metric, on made-up data | `validity.approved_at()`, `score()`, `precision_tradeoff()` |
+| `pytest`: `tests/test_features.py` | The features | `features.engineered()`, compared against the slow, independent `tests/reference_features.py` and checked to be unchanged under all 8 `orientations()`; `orientations()` itself, checked to give the 8 distinct rotations and reflections; `onehot()`, checked by rebuilding each grid from it; `augment()`, checked to keep each copy with its own grid's rating; empty input |
+| `tests/test_protocol.py` | The data split, leakage and saved predictions | `validity._load_raw()` (which grids are rated only), `lockbox_mask()`, `lockbox_fingerprint()`, `load_dev()`, `data_summary()`, `cv_splits()`, `fold_data()`, `out_of_fold()` (with a spy model that refuses to predict a grid it trained on, or a rotated or reflected copy of one, with and without augmentation), `cache_key()`, `open_lockbox()` (its refusals, unconfirmed or with anything uncommitted, and a confirmed opening on made-up data with a temporary log), `_git_state()` (on temporary git repositories: untracked, edited and staged files, git set to hide untracked files, and a folder without its own repository) and `VARIANTS`; `features.orientations()` |
+| `tests/test_metrics.py` | The comparison metric, on made-up data | `validity.approved_at()` (including ties and no approvals), `score()` (including a single shuffle, and shuffles that approve nothing), `precision_tradeoff()` |
 | `tests/test_scoring.py` | The score and the submission check | `scoring.diversity()` against the course's `utils_public.diversity_score`; `scoring.check_submission()` |
 | `tests/test_palette.py` | The figure colours | `plots.DISTRICT_COLOURS`, `plots.SURFACE` |
-| `tests/test_pin.py` | The course data version | `validity.course_pin()` against the commit checked out in `data/cp2-repo/` |
+| `tests/test_pin.py` | The course data version | `validity.course_pin()` against the commit checked out in `data/cp2-repo/`, and no edited files in that clone |
 | `tests/conftest.py` | Shared setup, not a test | Supplies test grids, and skips data-dependent tests when the course data is missing (on GitHub, they fail instead) |
-| `python tests/fault_injection.py` | That the tests catch three faults | Three tests from `test_protocol.py` and `test_features.py`, each run on the unchanged code and then with a fault applied in memory |
+| `python tests/fault_injection.py` | That the tests catch seven faults | Five tests from `test_protocol.py` and `test_features.py` (the spy test against three of the faults), each run on the unchanged code and then with a fault applied in memory |
 | GitHub: `.github/workflows/tests.yml` | Every push and pull request | Runs `./setup_data.sh`, builds the environment from `environment-ci.yml`, then runs `pytest` |
 | GitHub: `.github/workflows/course-updates.yml` | Daily, once the file is on `main` | Runs `./setup_data.sh --check` |
 
@@ -731,11 +734,11 @@ Each figure is saved by `_save()` into `docs/figures/` at 150 dpi.
 | File | Main functions | Uses | Used by |
 |---|---|---|---|
 | `features.py` | `onehot()`, `engineered()`, `orientations()`, `augment()` | NumPy, SciPy | `validity.py`, `plots.py`, `analysis.ipynb`, tests |
-| `validity.py` | `load_dev()`, `open_lockbox()`, `cv_splits()`, `out_of_fold()`, `score()`, `scorecard()`, `grid_report()`, `data_summary()` | `features.py`, scikit-learn, LightGBM (imported for GBM models whenever one is built or its saved predictions are looked up, because the fingerprint records LightGBM's version) | `make_figures.py`, `plots.py` (Figures 2 and 4), `analysis.ipynb`, tests |
+| `validity.py` | `load_dev()`, `open_lockbox()`, `cv_splits()`, `out_of_fold()`, `score()`, `scorecard()`, `grid_report()`, `data_summary()` | `features.py`, scikit-learn, LightGBM (imported for GBM models whenever one is built or its saved predictions are looked up, because the fingerprint records LightGBM's version) | `make_figures.py`, `plots.py` (Figures 2 and 4), `analysis.ipynb`, `starter_notebook.ipynb` (`lockbox_mask()`, when run locally), tests |
 | `scoring.py` | `diversity()`, `check_submission()` | NumPy only | `plots.py` (the README Figure 1 check), tests; Stage 4 |
 | `plots.py` | One `fig_…()` function per figure | `features.py`; `validity.py` and `scoring.py` inside the figures that need them | `make_figures.py`, `analysis.ipynb`, `tests/test_palette.py` |
 | `make_figures.py` | `readme()`, `stage1()` | `plots.py`, `validity.py` | The command line |
-| `starter_notebook.ipynb` | The course's assignment and baseline solution | The course's `utils_public.py`, in `data/cp2-repo/` | Run by hand |
+| `starter_notebook.ipynb` | The course's assignment and baseline solution | The course's `utils_public.py`, in `data/cp2-repo/`; `validity.lockbox_mask()` when run locally | Run by hand |
 
 **Where outputs go.**
 
@@ -762,20 +765,29 @@ push. Each check guards against an error that would corrupt results without caus
 | Test-set and development-set grids are disjoint, and `load_dev()` hides all test-set ratings | Test-set ratings reaching training |
 | No test-set grid appears in the development set as a rotated or reflected copy | An indirect form of the same leak |
 | Augmentation is applied only to the training folds, after splitting | Rotated copies of validation grids reaching training |
-| Saved predictions are reused only if the grids' row numbers and ratings, the model settings, the feature-version labels, the shuffle seeds, the scikit-learn and LightGBM versions and the course commit all match | Reuse of outdated predictions after any recorded change (for changes the fingerprint does not record, see "How the code fits together") |
-| The approval-count calculations behave as defined | Errors in the comparison metric |
+| Every out-of-fold prediction comes from a fresh model that never trained on that grid, or on a rotated or reflected copy of it, with and without augmentation | A model graded on grids it has already seen |
+| The test set opens only when confirmed and with everything in the repository committed, untracked files included whatever git's settings say; a refusal loads and logs nothing; a confirmed opening returns only test-set ratings and records itself (checked on made-up data) | A silent, untraceable or over-broad opening of the test set |
+| Saved predictions are reused only if the grids, the model inputs, the ratings, the model settings, the number of folds, the shuffle seeds, the library versions and the course commit all match | Reuse of outdated predictions (the exceptions are listed under "How the code fits together") |
+| The approval-count calculations behave as defined, including ties and advisors with no approvals | Errors in the comparison metric |
+| `features.orientations()` gives the 8 distinct rotations and reflections | Rotation checks that silently compare grids with themselves |
 | The grid and rating counts quoted under "Data" match the course data | Documentation that misstates the data |
 | `scoring.diversity` equals the course's `diversity_score` exactly | Optimizing a subtly different objective |
 | The submission checker rejects wrong shapes, arrays that are not 64-bit integers, values outside 0–4 and, by this project's own rule, duplicate grids | Submissions in the wrong format |
 | Every pair of district colours remains distinguishable, including under simulated colour blindness | Figures in which two districts look alike |
-| The downloaded course data matches the pinned commit | Building on course data that has changed |
+| The downloaded course data matches the pinned commit, with no edited files | Building on course data that has changed |
 
-The checks were themselves tested by introducing three deliberate faults: a changed test-set seed,
-augmentation before the split, and a corrupted feature definition. Each fault was detected.
+The checks were themselves tested by introducing seven deliberate faults, and each was detected:
+- a changed test-set seed;
+- augmentation before the split;
+- a corrupted feature definition;
+- models trained on the grids they then predict;
+- with augmentation, each round trained on every grid;
+- one model reused across rounds;
+- an orientation helper that stops rotating.
 
 *Source: `python tests/fault_injection.py`. For each fault, it confirms that the matching test passes
-on the unchanged code, then applies the fault in memory and confirms that the test fails. The run is
-recorded in `docs/decisions.md` (26 October).*
+on the unchanged code, then applies the fault in memory and confirms that the test fails. The runs
+are recorded in `docs/decisions.md` (26 and 28 October).*
 
 ## Course-repository updates
 

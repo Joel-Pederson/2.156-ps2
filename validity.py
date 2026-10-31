@@ -3,14 +3,16 @@
 Everything about measuring models honestly lives here, and
 every later stage imports from it:
 
-* ``load_dev()``         The labels we're allowed to learn from. Lockbox labels come back as
-                         NaN ("missing"), so ordinary code physically can't see them.
-* ``open_lockbox()``     The ONLY way to reach the lockbox labels. It refuses unless you confirm,
-                         and appends every opening to docs/lockbox_log.md.
+* ``load_dev()``         The labels we're allowed to learn from. Test-set (lockbox) labels come
+                         back as NaN ("missing"), so code that loads data this way can't see them.
+* ``open_lockbox()``     The ONLY way to reach the lockbox labels. It refuses unless you confirm
+                         and everything is committed, and logs every opening in
+                         docs/lockbox_log.md.
 * ``cv_splits()``        5-fold cross-validation, repeated 3 times with different shuffles.
 * ``fold_data()``        One fold's train and validation data. Rotation augmentation, when asked
                          for, touches only the training part, and only after the split.
-* ``VARIANTS``           The model variants we compare, declared up front (at most 6 per role).
+* ``VARIANTS``           Stage 1's model variants, declared up front. (Stage 2 compares
+                         "procedures" under a cap of 6 per advisor; docs/decisions.md.)
 * ``scorecard()``        Out-of-fold predictions for every variant and advisor, and the numbers
                          we choose models by.
 
@@ -29,7 +31,7 @@ writes  data/cache/oof/*.npy, *.json   cached out-of-fold predictions (gitignore
 
 How to run
 ----------
-    python validity.py                          # the full scorecard (~5-10 min first time, ~1 s after)
+    python validity.py                          # the full scorecard (~8 min first time, seconds after)
     python validity.py --variants gbm_engineered
     python validity.py --no-cache               # recompute everything from scratch
     python validity.py --grid 12                # one grid's predictions against each advisor's cut-off
@@ -45,10 +47,12 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import numpy as np
+import scipy
 import sklearn
 from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score
@@ -70,10 +74,10 @@ THRESHOLD = 0.75
 # Per-advisor precision used to compare models. 0.98 ** 4 ≈ 0.92: the chance a grid approved
 # for all four advisors is valid, if their errors are unrelated (docs/stage1_evaluation.md, "Why 98%").
 TARGET_PRECISION = 0.98
-LEVELS = (0.75, 0.80, 0.85)
 TRADEOFF_LEVELS = (0.90, 0.95, 0.98, 0.99)  # docs/stage1_evaluation.md, "Why 98%"
-BAND = (0.6, 0.9)  # "near the cutoff": where errors flip pass and fail. 
-                   # Reports one extra accuracy number, measured only on grids whose true rating is between the BAND values.     
+# True ratings near the 0.75 pass mark: where errors flip pass and fail.
+# Reports one extra accuracy number, measured only on grids whose true rating is between the BAND values.
+BAND = (0.6, 0.9)
 
 LOCKBOX_SEED = 2156
 LOCKBOX_SIZE = 1000  # per advisor
@@ -81,7 +85,10 @@ CV_FOLDS = 5
 CV_SEEDS = (0, 1, 2)  # one random seed per shuffle
 CV_REPEATS = len(CV_SEEDS)
 RIDGE_ALPHA = 1.0  # Ridge's penalty on large weights
-CACHE_SCHEMA = 1  # bump if the cache file layout changes
+# Bump if the cache file layout changes (2: the key hashes the model inputs).
+CACHE_SCHEMA = 2
+# Stage 1's cap on compared variants per role. Stage 2 caps decision-bearing procedures per
+# advisor instead (docs/decisions.md, "Procedure cap").
 MAX_VARIANTS_PER_ROLE = 6
 
 
@@ -110,7 +117,7 @@ def _load_raw():
 def lockbox_mask(ratings):
     """(500000, 4) bool: True where a label belongs to the lockbox.
 
-    Reads only *which* grids each advisor labelled, never the scores themselves. Every grid
+    Reads only *which* grids each advisor labelled, never the ratings themselves. Every grid
     that two or more advisors rated goes in, because those are our only evidence about whether
     models fail on the same grids. The rest is a seeded random fill up to 1,000 per advisor.
     """
@@ -147,37 +154,66 @@ def load_dev():
 def open_lockbox(reason, *, confirm=False):
     """The only route to the lockbox labels. Returns (grids, ratings with ONLY lockbox labels).
 
-    The lockbox is the final exam: opened once per frozen pipeline (plan, task 2.7). This
-    refuses unless confirm=True, and every opening is appended to docs/lockbox_log.md
-    with the time, the git commit and your reason.
+    The lockbox is the final exam: opened once, after the final pipeline is fixed and its
+    expected precision is recorded (rule 2.7 in docs/decisions.md). This refuses unless
+    confirm=True and git shows nothing uncommitted in this repository, untracked files
+    included. Every opening is appended to docs/lockbox_log.md with the time, the full commit
+    hash, the script that called it and your reason. Code outside the repository, or in paths
+    git ignores, escapes the check, so rule 2.7 also requires a committed grading script.
     """
     if not confirm:
         raise PermissionError(
-            "The lockbox is opened once per frozen pipeline. Pass confirm=True deliberately; "
-            "every opening is logged in docs/lockbox_log.md."
+            "The lockbox is opened once, for the final pipeline (rule 2.7 in docs/decisions.md). "
+            "Pass confirm=True deliberately; every opening is logged in docs/lockbox_log.md."
         )
     if not reason or not reason.strip():
         raise ValueError("say why you are opening the lockbox")
+    commit, uncommitted = _git_state()
+    if uncommitted:
+        raise PermissionError(
+            "Commit everything first (rule 2.7), so the logged commit holds the code. "
+            f"Not committed: {', '.join(uncommitted[:5])}"
+        )
     grids, ratings = _load_raw()
     lock = np.where(lockbox_mask(ratings), ratings, np.nan)
-    _log_lockbox_opening(reason.strip())
+    _log_lockbox_opening(reason.strip(), commit)
     return grids, lock
 
 
-def _git_head():
-    try:
-        out = subprocess.run(
-            ["git", "-C", PS2_ROOT, "rev-parse", "--short", "HEAD"],
+def _git_state():
+    """(full hash of the current commit, paths that git lists as uncommitted or untracked).
+
+    Only this folder's own repository counts: git may not look in the folders above it (the
+    course folder above is a repository that ignores this one). Untracked files are listed
+    whatever git's settings say; ignored paths (data/, caches) are not. Raises if git can't
+    answer, so the lockbox never opens without a commit to log.
+    """
+    env = {**os.environ, "GIT_CEILING_DIRECTORIES": os.path.realpath(f"{PS2_ROOT}/..")}
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", PS2_ROOT, *args],
             capture_output=True,
             text=True,
             check=True,
-        )
-        return out.stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+            env=env,
+        ).stdout
+
+    commit = git("rev-parse", "HEAD").strip()
+    status = git("status", "--porcelain", "--untracked-files=all")
+    return commit, [line[3:] for line in status.splitlines()]
 
 
-def _log_lockbox_opening(reason):
+def _caller():
+    """The running script: its path inside the repository, or its full path if outside."""
+    script = os.path.realpath(sys.argv[0]) if sys.argv and sys.argv[0] else ""
+    root = os.path.realpath(PS2_ROOT)
+    if script.startswith(root + os.sep):
+        return os.path.relpath(script, root)
+    return script or "an interactive session"
+
+
+def _log_lockbox_opening(reason, commit):
     os.makedirs(os.path.dirname(LOCKBOX_LOG), exist_ok=True)
     new = not os.path.exists(LOCKBOX_LOG)
     with open(LOCKBOX_LOG, "a") as f:
@@ -187,7 +223,7 @@ def _log_lockbox_opening(reason):
                 "Every line is one look at the final exam.\n\n"
             )
         stamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-        f.write(f"- {stamp} · commit {_git_head()} · {reason}\n")
+        f.write(f"- {stamp} · commit {commit} · run from {_caller()} · {reason}\n")
 
 
 def course_pin():
@@ -208,9 +244,10 @@ def course_pin():
 def cv_splits(n, folds=CV_FOLDS, repeats=CV_REPEATS):
     """Yield (shuffle, fold, train_idx, val_idx) for repeated k-fold cross-validation.
 
-    Shuffle r assigns grids to folds with seed CV_SEEDS[r]; shuffle 0 is exactly the split the
-    planning experiments used. Running under several shuffles shows how much a result moves
-    just from which grids land in which fold: the noise threshold (docs/stage1_evaluation.md, "Shuffle procedure").
+    Shuffle r assigns grids to folds with seed CV_SEEDS[r]; shuffle 0 (called shuffle 1 in the
+    documents) is exactly the split the planning experiments used. Running under several
+    shuffles shows how much a result moves just from which grids land in which fold: the
+    noise threshold (docs/stage1_evaluation.md, "Shuffle procedure").
     """
     for r in range(repeats):
         splitter = KFold(folds, shuffle=True, random_state=CV_SEEDS[r])
@@ -285,11 +322,14 @@ class Variant:
         else:
             spec["onehot_version"] = features.ONEHOT_VERSION
         spec["sklearn"] = sklearn.__version__
+        spec["numpy"] = np.__version__
+        spec["scipy"] = scipy.__version__
         return spec
 
 
-# The planning probes already compared these four; Stage 1 reproduces them. Stage 2 adds the
-# CNN second-opinion candidates. The cap is per role: a variant counts if a decision rides on it.
+# The planning experiments already compared these four; Stage 1 reproduces them. Stage 2 adds the
+# CNN second-opinion candidates. Stage 1 capped variants per role; Stage 2 caps decision-bearing
+# procedures per advisor instead (docs/decisions.md, "Procedure cap").
 VARIANTS = {
     "ridge_onehot": Variant("onehot", "ridge", role="baseline"),
     "gbm_onehot": Variant("onehot", "gbm", role="baseline"),
@@ -310,18 +350,26 @@ PLANNING_R2 = {
 
 
 # --------------------------------------------------------------------------------------
-# out-of-fold predictions, cached so they can never go stale
+# out-of-fold predictions, cached under a fingerprint of everything that produced them
 # --------------------------------------------------------------------------------------
 
 
-def cache_key(variant, y, rows):
+def cache_key(variant, grids, X, y, rows):
     """A hash of everything that could change a variant's out-of-fold predictions.
 
-    That means the variant itself (features, model, settings, library versions), the feature
-    definitions, the exact rows and labels, the course-data version and the CV layout. If any
-    of them changes, the key changes and the cache misses, so a stale prediction can't
-    be reused. This fixes the old bug where a cache was reused just because its shape matched.
+    It covers the grids and the model inputs built from them (X: so editing a feature
+    definition changes the key even if no version label was bumped), the rows and their
+    ratings, the variant's settings and library versions (Variant.spec), the number of folds
+    and the shuffle seeds, the test-set seed and the course-data version. If any of them
+    changes, the cache misses and the predictions are recomputed.
+
+    Not covered: edits to the code that leave every setting unchanged: Variant.make_model,
+    the loop in out_of_fold, cv_splits beyond its fold count and seeds, and, for a variant
+    with augmentation, fold_data, features.augment and the orientations it uses
+    (features.orientations, features.SYMMETRIES); and the Python version (pinned in
+    environment.yml). Run with --no-cache after such an edit.
     """
+    grids, X = np.ascontiguousarray(grids), np.ascontiguousarray(X)
     payload = {
         "schema": CACHE_SCHEMA,
         "variant": variant.spec(),
@@ -329,6 +377,12 @@ def cache_key(variant, y, rows):
         "cv_seeds": list(CV_SEEDS),
         "course_pin": course_pin(),
         "lockbox_seed": LOCKBOX_SEED,
+        "grids": [hashlib.sha256(grids.tobytes()).hexdigest(), list(grids.shape)],
+        "inputs": [
+            hashlib.sha256(X.tobytes()).hexdigest(),
+            list(X.shape),
+            str(X.dtype),
+        ],
         "rows": hashlib.sha256(
             np.asarray(rows, np.int64).tobytes() + np.asarray(y, np.float64).tobytes()
         ).hexdigest(),
@@ -339,13 +393,13 @@ def cache_key(variant, y, rows):
 def out_of_fold(name, grids, y, rows, use_cache=True):
     """(CV_REPEATS, n) predictions; each made by a model that never saw that grid."""
     variant = VARIANTS[name]
-    key = cache_key(variant, y, rows)
+    X = variant.featurize(grids)  # the model inputs; also fingerprinted by cache_key
+    key = cache_key(variant, grids, X, y, rows)
     path = os.path.join(CACHE_DIR, f"{name}-{key[:16]}.npy")
     if use_cache and os.path.exists(path):
         return np.load(path)
 
     preds = np.full((CV_REPEATS, len(y)), np.nan)
-    X = None if variant.augment else variant.featurize(grids)
     for r, _, train, val in cv_splits(len(y)):
         if variant.augment:
             g_train, y_train, g_val, _ = fold_data(grids, y, train, val, augment=True)
@@ -358,9 +412,8 @@ def out_of_fold(name, grids, y, rows, use_cache=True):
 
     os.makedirs(CACHE_DIR, exist_ok=True)
     np.save(path, preds)
-    with open(
-        path.replace(".npy", ".json"), "w"
-    ) as f:  # what produced this file, readable
+    # A readable record of what produced this file.
+    with open(path.replace(".npy", ".json"), "w") as f:
         json.dump(
             {"name": name, "key": key, "spec": variant.spec(), "n": len(y)}, f, indent=1
         )
@@ -380,45 +433,57 @@ def approved_at(pred, y, target=TARGET_PRECISION):
     where that fraction is still ≥ target, the approval cut-off (the predicted rating of the
     last grid approved), and how many of the approved grids truly pass. (0, inf, 0) if no
     count reaches the target.
+
+    The count only ever stops at the end of a group of tied predictions. The rule "approve at
+    or above the cut-off" approves every grid that shares the cut-off's predicted rating, so a
+    count that split a tie group would not be the count that rule approves.
     """
     order = np.argsort(-pred, kind="stable")
+    ranked = pred[order]
     hits = np.cumsum(y[order] >= THRESHOLD)
     precision = hits / np.arange(1, len(y) + 1)
-    ok = np.flatnonzero(precision >= target)
+    ends_tie_group = np.r_[ranked[1:] != ranked[:-1], True]
+    ok = np.flatnonzero((precision >= target) & ends_tie_group)
     if not len(ok):
         return 0, np.inf, 0
     last = ok[-1]
-    return last + 1, float(pred[order][last]), int(hits[last])
+    return last + 1, float(ranked[last]), int(hits[last])
+
+
+def mean_cutoff(cutoffs):
+    """The mean of the per-shuffle cut-offs that exist (a shuffle that approves nothing has
+    none, shown as inf). inf if no shuffle approves anything."""
+    finite = [c for c in cutoffs if np.isfinite(c)]
+    return float(np.mean(finite)) if finite else np.inf
 
 
 @dataclass
 class Score:
-    """One variant on one advisor; each value is the mean over the three shuffles."""
+    """One variant on one advisor. Values are means over the three shuffles unless noted."""
 
     r2: float  # 1 - MSE / variance of the true ratings (1 = perfect, 0 = predicting the mean)
     r2_fold_sd: float  # s.d. of the 15 single-fold R² values: the R² noise threshold
     band_rmse: float  # RMSE for grids with true rating 0.6–0.9
     approved: float  # approval count at 98% precision
     approved_per_shuffle: tuple  # the three per-shuffle counts behind that mean
-    cutoff: float  # approval cut-off: predicted rating of the last grid approved
+    cutoff: float  # approval cut-off: predicted rating of the last grid approved (mean_cutoff)
+    cutoff_per_shuffle: tuple  # each shuffle's cut-off; inf where it approves nothing
     recall: float  # share of the advisor's truly passing grids that are approved
-    precision_at: dict  # level -> (grids predicted ≥ level, fraction truly ≥ 0.75)
 
 
 def score(preds, y):
-    """Summarize (CV_REPEATS, n) out-of-fold predictions against labels y."""
-    fold_r2 = [r2_score(y[val], preds[r, val]) for r, _, _, val in cv_splits(len(y))]
+    """Summarize (shuffles, n) out-of-fold predictions against labels y.
+
+    Works for any number of shuffles from 1 to CV_REPEATS; shuffle r must use the folds of
+    cv_splits' shuffle r.
+    """
+    fold_r2 = [
+        r2_score(y[val], preds[r, val])
+        for r, _, _, val in cv_splits(len(y), repeats=len(preds))
+    ]
     band = (y >= BAND[0]) & (y <= BAND[1])
     per_repeat = [approved_at(p, y) for p in preds]
     passing = (y >= THRESHOLD).sum()
-    precision_at = {}
-    for level in LEVELS:
-        counts, fracs = [], []
-        for p in preds:
-            sel = p >= level
-            counts.append(sel.sum())
-            fracs.append((y[sel] >= THRESHOLD).mean() if sel.any() else np.nan)
-        precision_at[level] = (float(np.mean(counts)), float(np.nanmean(fracs)))
     return Score(
         r2=float(np.mean([r2_score(y, p) for p in preds])),
         r2_fold_sd=float(np.std(fold_r2)),
@@ -427,9 +492,9 @@ def score(preds, y):
         ),
         approved=float(np.mean([k for k, _, _ in per_repeat])),
         approved_per_shuffle=tuple(int(k) for k, _, _ in per_repeat),
-        cutoff=float(np.mean([c for _, c, _ in per_repeat])),
+        cutoff=mean_cutoff([c for _, c, _ in per_repeat]),
+        cutoff_per_shuffle=tuple(float(c) for _, c, _ in per_repeat),
         recall=float(np.mean([hits for _, _, hits in per_repeat])) / passing,
-        precision_at=precision_at,
     )
 
 
@@ -453,13 +518,15 @@ def scorecard(names=None, use_cache=True, verbose=True):
 
 
 def print_scorecard(results):
-    """The scorecard tables in docs/stage1_evaluation.md: approval count at 98% precision, then R² and RMSE."""
+    """Print the scorecard: approval count, approval cut-off and share approved (the tables in
+    docs/stage1_evaluation.md, "Results"), then R² and the RMSE for true ratings 0.6–0.9."""
     head = "".join(f"{a:>22}" for a in ADVISORS)
     some = next(iter(results.values()))
     n_dev = len(next(iter(some.values()))["y"])
+    sc_any = next(iter(some.values()))["score"]
     print(
         f"\nApproval count at 98% precision, of {n_dev:,} development-set grids per advisor:"
-        "\nmean over the 3 shuffles [the 3 per-shuffle counts]"
+        f"\nmean over the {len(sc_any.approved_per_shuffle)} shuffles [the per-shuffle counts]"
     )
     print(f"  {'variant':<18}{head}")
     for name, by_adv in results.items():
@@ -467,19 +534,28 @@ def print_scorecard(results):
         for a in ADVISORS:
             sc = by_adv[a]["score"]
             each = "/".join(str(k) for k in sc.approved_per_shuffle)
-            cells += f"{sc.approved:>8.0f} [{each:>12}]"
+            cells += f"{sc.approved:>7.0f} [{each:>12}]"
         print(f"  {name:<18}{cells}")
     print(
         "\nApproval cut-off: the predicted rating of the last grid approved at 98% precision,"
         "\nmean over the 3 shuffles. A grid is approved for an advisor at or above it."
     )
     print(f"  {'variant':<18}{head}")
+    partial = False
     for name, by_adv in results.items():
         cells = ""
         for a in ADVISORS:
-            cut = by_adv[a]["score"].cutoff
-            cells += f"{cut:>22.3f}" if np.isfinite(cut) else f"{'none':>22}"
+            sc = by_adv[a]["score"]
+            missing = sum(not np.isfinite(c) for c in sc.cutoff_per_shuffle)
+            if not np.isfinite(sc.cutoff):
+                cell = "none"
+            else:
+                cell = f"{sc.cutoff:.3f}" + ("*" if missing else "")
+                partial = partial or bool(missing)
+            cells += f"{cell:>22}"
         print(f"  {name:<18}{cells}")
+    if partial:
+        print("  * mean over the shuffles that approve at least one grid")
     print(
         "\nShare of the advisor's truly passing grids (true rating >= 0.75) that are approved"
     )
@@ -581,6 +657,8 @@ def grid_report(index, name="gbm_engineered"):
     predictions, computing them first if they are missing.
     """
     grids, dev = load_dev()
+    # The row lookup below needs the plain row number.
+    index = _grid_number(index, len(grids))
     variant = VARIANTS[name]
     x = variant.featurize(grids[index][None])
     report = []
@@ -588,9 +666,10 @@ def grid_report(index, name="gbm_engineered"):
         rows = np.flatnonzero(~np.isnan(dev[:, a]))
         y = dev[rows, a]
         preds = out_of_fold(name, grids[rows], y, rows)
-        cutoff = float(np.mean([approved_at(p, y)[1] for p in preds]))
+        cutoff = mean_cutoff([approved_at(p, y)[1] for p in preds])
         if not np.isnan(dev[index, a]):
             pos = int(np.searchsorted(rows, index))
+            assert rows[pos] == index
             pred, true = float(preds[:, pos].mean()), float(dev[index, a])
         else:
             model = variant.make_model()
@@ -600,7 +679,16 @@ def grid_report(index, name="gbm_engineered"):
     return report
 
 
+def _grid_number(index, n):
+    """A grid's row number, 0 to n - 1. Negative numbers count from the end, as in Python
+    indexing (-1 is the last grid); anything else outside the range raises IndexError."""
+    if not -n <= index < n:
+        raise IndexError(f"there is no grid {index}: grids are numbered 0 to {n - 1:,}")
+    return int(index) % n
+
+
 def print_grid_report(index, name="gbm_engineered"):
+    index = _grid_number(index, len(_load_raw()[0]))  # show grid -1 as 499999
     print(
         f"Grid {index}: predicted rating for each advisor ({name}),"
         "\nagainst that advisor's approval cut-off at 98% precision"
@@ -689,7 +777,11 @@ def main():
     )
     args = ap.parse_args()
     if args.grid is not None:
-        print_grid_report(args.grid)
+        try:
+            index = _grid_number(args.grid, len(_load_raw()[0]))
+        except IndexError as e:
+            ap.error(str(e))
+        print_grid_report(index)
         return
     if args.data:
         print_data_summary()

@@ -20,6 +20,11 @@ dependencies:
   - pytorch        # CPU/MPS build; Apple Silicon has no CUDA
   - lightgbm
 
+  # --- Stage 2 search tools (docs/plan.md, Part 2) ---
+  - optuna         # efficient search over model settings
+  - flaml          # lightweight AutoML, used as a benchmark
+  - xgboost        # needed by FLAML's AutoML
+
   # --- Notebook tooling ---
   - jupyterlab
   - ipykernel

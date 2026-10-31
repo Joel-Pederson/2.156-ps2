@@ -27,8 +27,8 @@ Colours
   pair differs by ΔE 18.0 under normal vision (minimum 15) and 13.3 under simulated red-green
   colour blindness (target 8). Pink and amber are below 3:1 contrast with the page, so every
   cell also carries its letter (R I C P O).
-* Everything else uses the stock categorical palette in fixed order, never cycled. The splits
-  diagram uses only the first three slots, which the skill validates for any combination.
+* Everything else uses the stock categorical palette in fixed order, never cycled. The
+  cross-validation diagram (fig_cv_rounds) uses only the first three slots.
 * Text is always ink (near-black or grey), never a series colour.
 
 Reads / writes
@@ -596,8 +596,9 @@ def fig_approval_curve(
     top k, the curve shows the share of those k grids that truly pass (true rating >= 0.75). The
     approval count at a precision level is the last k at which the curve is at or above that
     level, computed by validity.approved_at, the same function the scorecard uses. Each marked
-    point is labelled with the number approved and how many of those truly fail. Labels only;
-    the caption is below the figure.
+    point is labelled with the number approved and how many of those truly fail. A level that
+    no count reaches, or that is reached beyond x_max, is listed above the plot instead of
+    marked. Labels only; the caption is below the figure.
     """
     import validity  # local import: only this figure needs the metric code
 
@@ -609,11 +610,21 @@ def fig_approval_curve(
     shown = k <= x_max
     fig, ax = plt.subplots(figsize=(9.5, 4.4))
     ax.plot(k[shown], 100 * share[shown], color=SERIES[0], linewidth=2)
-    for level, dy in ((0.95, 1.1), (0.98, 1.1), (0.99, 1.1)):
+    levels = ((0.95, 1.1), (0.98, 1.1), (0.99, 1.1))
+    notes = []  # levels with no point on the drawn curve
+    for level, dy in levels:
         count, _, hits = validity.approved_at(pred, y, level)
         ax.axhline(
             100 * level, color=RULE, linewidth=1, linestyle=(0, (4, 3)), zorder=0
         )
+        if count == 0:
+            notes.append(f"{level:.0%}: no number of approvals reaches it")
+            continue
+        if count > x_max:
+            notes.append(
+                f"{level:.0%}: {count} approved, {count - hits} fail (beyond this axis)"
+            )
+            continue
         ax.text(
             x_max * 1.005,
             100 * level,
@@ -641,7 +652,10 @@ def fig_approval_curve(
             color=INK,
             va="center",
         )
-    low = 100 * share[shown].min()
+    if notes:
+        ax.set_title("\n".join(notes), fontsize=9, color=INK_2, loc="right")
+    # Every level's line and label stay inside the plot, even where the curve stays above them.
+    low = min(100 * share[shown].min(), 100 * levels[0][0])
     ax.set_xlim(0, x_max)
     ax.set_ylim(np.floor(low) - 1, 100.6)
     ax.set_xlabel(
@@ -705,10 +719,15 @@ def fig_scorecard(results):
 def fig_pred_vs_actual(results, name, threshold=0.75):
     """Figures 6-7: predicted vs true rating per advisor, one point per development-set grid.
 
-    Predictions are out-of-fold, from the first shuffle. The image carries labels only;
-    its title and description are the caption.
+    Predictions are out-of-fold, from the first shuffle. The vertical range is -0.2 to 1.2,
+    widened only if a prediction falls outside it, so every prediction is drawn. The image
+    carries labels only; its title and description are the caption.
     """
     advisors = list(results[name])
+    first = [results[name][adv]["preds"][0] for adv in advisors]
+    low, high = min(p.min() for p in first), max(p.max() for p in first)
+    lo = -0.2 if low >= -0.2 else low - 0.05
+    hi = 1.2 if high <= 1.2 else high + 0.05
     fig, axes = plt.subplots(1, len(advisors), figsize=(12, 3.5), sharey=True)
     for ax, adv in zip(axes, advisors):
         y, p = results[name][adv]["y"], results[name][adv]["preds"][0]
@@ -717,7 +736,7 @@ def fig_pred_vs_actual(results, name, threshold=0.75):
             Rectangle(
                 (-0.05, threshold),
                 threshold + 0.05,
-                1.2 - threshold,
+                hi - threshold,
                 facecolor=SERIES[7],
                 alpha=0.10,
                 linewidth=0,
@@ -730,7 +749,7 @@ def fig_pred_vs_actual(results, name, threshold=0.75):
         wrong = ((p >= threshold) & (y < threshold)).sum()
         ax.text(
             0.02,
-            1.13,
+            hi - 0.05 * (hi - lo),
             f"Predicted to pass,\ntruly fails: {wrong}",
             fontsize=8.3,
             color=INK_2,
@@ -738,7 +757,7 @@ def fig_pred_vs_actual(results, name, threshold=0.75):
         )
         ax.set_title(f"{adv}   R² {results[name][adv]['score'].r2:.2f}", fontsize=10)
         ax.set_xlim(-0.05, 1.05)
-        ax.set_ylim(-0.2, 1.2)
+        ax.set_ylim(lo, hi)
         ax.set_xlabel("True rating")
     axes[0].set_ylabel("Predicted rating")
     fig.tight_layout()

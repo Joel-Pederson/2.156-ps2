@@ -2,6 +2,8 @@
 
 1. Every engineered feature is unchanged by all 8 rotations and mirrors (risk R14).
 2. The fast vectorized code agrees with a slow, obviously-correct version (risk R14).
+Plus: orientations() really gives the 8 distinct rotations and mirrors (other tests rely on
+it), and an empty batch gives empty feature arrays.
 """
 
 import numpy as np
@@ -38,6 +40,21 @@ def test_onehot_holds_exactly_the_grid(grid_zoo):
     assert oh.shape == (len(grid_zoo), 245)
     assert np.array_equal(oh.reshape(-1, 7, 7, 5).argmax(-1), grid_zoo)
     assert np.all(oh.sum(1) == 49)  # exactly one district per cell
+
+
+def test_orientations_are_the_eight_rotations_and_mirrors():
+    g = np.random.default_rng(7).integers(0, 5, size=(7, 7))
+    expected = {np.rot90(h, k).tobytes() for h in (g, np.fliplr(g)) for k in range(4)}
+    got = {np.ascontiguousarray(o).tobytes() for o in features.orientations(g)}
+    assert len(expected) == 8 and got == expected
+    turned, labels = features.augment(g[None], [0.5])
+    assert len({t.tobytes() for t in turned}) == 8 and np.all(labels == 0.5)
+
+
+def test_an_empty_batch_gives_empty_features():
+    empty = np.zeros((0, 7, 7), np.int8)
+    assert features.engineered(empty).shape == (0, 75)
+    assert features.onehot(empty).shape == (0, 245)
 
 
 def test_augment_keeps_each_grid_with_its_own_label(grid_zoo):

@@ -14,6 +14,8 @@
 #   ./setup_data.sh --check    # has the course repo moved past our pin? (reads only;
 #                              #   exit 0 = up to date, 1 = moved, 2 = couldn't reach GitHub)
 #   ./setup_data.sh --update   # move the pin to the course repo's latest
+#
+# Any mode exits 3 if course_commit.txt is missing or holds no valid 40-character commit hash.
 set -euo pipefail
 
 COURSE_REPO="https://github.com/decode-mit/2155-CP2-2026.git"
@@ -31,7 +33,9 @@ case "${1:-}" in
 esac
 
 read_pin() {
-  grep -vE '^[[:space:]]*(#|$)' "$PIN_FILE" | head -1 | tr -d '[:space:]'
+  # "|| true": a file with no commit line must reach the error message below, not end the
+  # script silently (set -e would otherwise stop on grep's "nothing found" exit code).
+  { grep -vE '^[[:space:]]*(#|$)' "$PIN_FILE" || true; } | head -1 | tr -d '[:space:]'
 }
 
 write_pin() { # $1 = sha, $2 = date, $3 = subject
@@ -42,9 +46,11 @@ write_pin() { # $1 = sha, $2 = date, $3 = subject
   mv "$PIN_FILE.tmp" "$PIN_FILE"
 }
 
-[ -f "$PIN_FILE" ] || { echo "ERROR: $PIN_FILE missing" >&2; exit 1; }
+[ -f "$PIN_FILE" ] || { echo "ERROR: $PIN_FILE missing" >&2; exit 3; }
 PINNED="$(read_pin)"
-[ -n "$PINNED" ] || { echo "ERROR: no commit found in $PIN_FILE" >&2; exit 1; }
+[ -n "$PINNED" ] || { echo "ERROR: no commit found in $PIN_FILE" >&2; exit 3; }
+[[ "$PINNED" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "ERROR: '$PINNED' in $PIN_FILE is not a 40-character commit hash" >&2; exit 3; }
 
 # --check only asks GitHub which commit the course repo is at. It downloads nothing and
 # never touches data/. The daily GitHub job runs this; a non-zero exit emails the repo owner.
@@ -80,6 +86,11 @@ if [ "$UPDATE" -eq 1 ]; then
   echo "Checking $COURSE_REPO for a newer commit..."
   git -C "$DEST" fetch -q --depth 1 origin HEAD
   TARGET="$(git -C "$DEST" rev-parse FETCH_HEAD)"
+  # The comparison further down needs the pinned commit on disk too. A fresh clone holds only
+  # the latest commit, which would make every comparison fail and falsely report a change.
+  if ! git -C "$DEST" cat-file -e "${PINNED}^{commit}" 2>/dev/null; then
+    git -C "$DEST" fetch -q --depth 1 origin "$PINNED"
+  fi
 else
   TARGET="$PINNED"
   if ! git -C "$DEST" cat-file -e "${TARGET}^{commit}" 2>/dev/null; then

@@ -10,6 +10,6 @@ dependencies:
   - scipy
   - scikit-learn
   - lightgbm
-  - matplotlib     # utils_public.py imports it
+  - matplotlib-base  # utils_public.py imports it; "-base" skips the unused Qt GUI toolkit
   - pillow         # utils_public.py imports it
   - pytest

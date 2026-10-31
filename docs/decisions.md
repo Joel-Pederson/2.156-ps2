@@ -6,10 +6,11 @@ It serves three purposes:
 1. **Limiting selection bias.** Selection bias is the best of many compared options looking better
    than it is, because chance favoured it (`stage1_evaluation.md`, "Validation and test sets"). Each
    comparison made on the development set is a look at that data. Recording every comparison keeps
-   the number of compared *variants* (model configurations: inputs, model type and settings) within
-   the cap below, so that chance does not decide which model wins.
-2. **Fixing decision rules in advance.** The thresholds below were set before the results they judge.
-   Any change to a threshold requires an entry explaining why.
+   the number of compared options within the caps below (in Stage 1, *variants*: model
+   configurations; from Stage 2, *procedures*), so that chance does not decide which model wins.
+2. **Fixing decision rules in advance.** The thresholds below were set before the results they judge,
+   with two disclosed exceptions (rule 2.2 and the Stage 2 adoption rule; see the 28 October entry on
+   the Stage 2 protocol). Any change to a threshold requires an entry explaining why.
 3. **Supporting the reflection report.** The entries document the reasoning behind each choice.
 
 **Entry format.** Each entry gives the date, what was compared, the data used (the development set,
@@ -29,56 +30,69 @@ The *primary model* is GBM (gradient boosting machine) on engineered features.
 
 ---
 
-## Decision rules fixed in advance (project plan, 25 October 2026)
+## Decision rules fixed in advance (project plan of 25 October 2026, revised 28 October)
 
-Task numbers refer to the project plan's stages: 1 = evaluation protocol, 2 = models, 3 = generating
-designs, 4 = selecting the final 100. Rule 2.8 was added on 26 October, before the test set had been
-opened.
+Task numbers refer to the stages of the project plan in [`plan.md`](plan.md): 1 = evaluation
+protocol, 2 = models, 3 = generating designs, 4 = selecting the final 100. Rule 2.8 was added on
+26 October. The rows marked "revised" were made exact on 28 October, before the Stage 2 harness ran
+(see that day's entry on the Stage 2 protocol). Two exceptions, disclosed in that entry: rule 2.2's
+revised test had already been run in the 26 October audit, so its outcome for Wellness and Tax was
+known; and rule 1.3's adoption rule was chosen knowing how rule 2.2's true-orientation arm fares
+under it for Wellness. The original wording is in `plan.md`, except rule 2.8's (added 26 October),
+which is in commit 8a558fd.
 
-*Provenance.* The plan is a local file outside this repository, so its task numbers cannot yet be
-looked up here. It was last edited at 09:59 on 25 October, before the first scorecard run at 10:11
-(the timestamps of the cache files), so these rules predate the results they judge. Until this log
-is committed, git cannot confirm its dates.
+*Provenance.* The plan was last edited at 09:59 on 25 October, before the first scorecard run at
+10:11 (the timestamps of the cache files), so the original rules predate the results they judge.
+This log was first committed on 28 October (commit 8a558fd).
 
 | Task | Condition | Action |
 |---|---|---|
-| 1.3 | Models are compared during development | Compare them by the approval count at 98% precision for each advisor (rationale: entry of 26 October) |
-| 2.2 | Position-dependent features (features that change when a grid is rotated or reflected, such as the district in the top-left cell) raise an advisor's R² by more than its R² noise threshold | Add them for that advisor, and submit no rotated or reflected copies of designs |
-| 2.3 | A CNN (convolutional neural network: a model that scans the grid with small learned pattern detectors, called filters) trained to predict the primary model's errors reaches R² above 0.05 on them | Identify and add the missing feature before Stage 3 |
-| 2.4 | A readable formula (a short explicit expression in a few engineered features) ranks an advisor's development-set grids with a rank correlation of at least 0.99. Rank correlation measures agreement between two orderings of the same grids; 1 means identical order | Use the formula instead of a model for that advisor |
-| 2.7 | The test set is about to be opened | First record each advisor's expected test-set precision in this log; then open it once. If test-set precision at the final models' approval cut-offs is more than 3 percentage points below the cross-validation estimate, investigate on the development set only, and disclose |
-| 2.8 | The test set is evaluated (task 2.7) | On the grids rated by two or more advisors, measure for each pair whether one model's errors (predicted minus true rating) rise with the other model's predicted rating, which would lower its precision on grids approved by both. Disclose the result. It is used to interpret the scoreboard results; models are not re-chosen on it |
-| 3.1 | The design generator (the Stage 3 method that creates new grids) produces no designs by the end of 28 October | Submit a dataset-only selection first (100 grids chosen by the models from the unrated dataset grids, with no new designs); continue development |
-| 3.3 | A model trained on one half of the development set rejects at least 2% of the designs produced with a model trained on the other half, for any advisor | Raise that advisor's safety margin (how far above 0.75 a design's predicted ratings must be) |
-| 3.5 | The independent check model (a second model with different inputs, used to catch the primary model's errors; see the entry of 25 October on the primary model) rejects more than 10% of designs | Tighten the safety margin and the similarity-to-training-data requirement (how close a design must be to rated grids, so that the models are not extrapolating) before generating more |
-| 3.6 | The best 100 of a 300-design pilot (a trial batch) do not exceed a score of 0.45 (the diversity score computed by `scoring.diversity`, treating all 100 as valid) | Require designs to cover different district compositions |
-| 4.2 | The scoreboard test of rotated designs has not passed | Submit no rotated copies; after it passes, at most four copies per design |
-| 4.4 | The first submission of generated designs has not been scored | Reduce designed grids' estimated pass probabilities by twice the failure rate found in task 3.3. A pass probability is the estimated chance that a grid passes all four advisors, derived in Stage 4 from the models' precision |
+| 1.3, revised | Models are compared during development | Compare them by the approval count at 98% precision for each advisor (rationale: entry of 26 October). From Stage 2, a model is adopted only under the Stage 2 adoption rule: the paired test and at least 3% more approvals (28 October protocol) |
+| 2.2, revised | A paired test on the same 15 folds: GBM given the engineered features plus the one-hot inputs (which record each cell's position) in their true orientation, against the same model with the one-hot inputs computed on re-oriented grids. In each of five draws (seeds 1 to 5), every grid gets one of its seven other orientations at random, kept across folds. Per-fold mean squared error; the control's is the mean over the five draws' models (their predictions are not averaged). Orientation matters for an advisor if the corrected t is at least 1.761 (one-sided 5%), with no correction across the four advisors, because a finding leads to the cautious action. A label-free test of whether the dataset itself has orientation patterns is reported alongside | If orientation matters for an advisor: no augmentation for it, and no rotated or reflected copies of designs in submissions (rule 4.2). Otherwise augmentation is one of the search's options, kept only if inner scores favour it. Position-aware features compete inside the search for every advisor either way |
+| 2.3, revised | A CNN (convolutional neural network: a model that scans the grid with small learned pattern detectors, called filters), fitted inside each outer training set to the inner out-of-fold errors (predicted minus true rating) of the advisor's procedure in force, predicts that procedure's out-of-fold errors on the outer validation grids with an R² above 0.05, pooled over the 15 outer folds. The CNN's settings are the CNN procedure's inner choice, fixed before this R² is seen. Run in Session 2, and again if Session 3 changes the procedure. The squared correlation is reported too, because inner errors (from models trained on 2,400 grids) and outer errors (3,200) differ in scale | Identify and add the missing feature before Stage 3 |
+| 2.4, revised | A readable formula (a short explicit expression in a few features), found using shuffle 1's folds 1–3 only and recorded here before it is scored; one formula per advisor. The hunt reads data only through a loader that returns those grids: not `scorecard()`, `out_of_fold()` or `data/cache/oof/`, and any helper model is trained on folds 1–3 only. On folds 4–5 it ranks the grids with a Spearman rank correlation of at least 0.99 (agreement between two orderings of the same grids; 1 means identical order), and approves at least as many grids at 98% precision as the incumbent's out-of-fold predictions for the same grids | Use the formula instead of a model for that advisor. It counts as one of the advisor's procedures. Folds 4–5 are its only clean test, because folds 1–3 overlap every outer fold of shuffles 2 and 3, so later challengers for that advisor are compared with it on folds 4–5 only (at least 3% more approvals) |
+| 2.7, revised | The test set is about to be opened | First commit each advisor's expected test-set precision, from approval cut-offs chosen by cross-fitting on the development set, with a Wilson 95% interval. The graded model is the final procedure refit on all 4,000 development-set grids, with those cut-offs; the expectation comes from models trained on 3,200 grids, so the comparison also absorbs the effect of the larger training set. Also commit each advisor's predictions for its 1,000 test-set grids (making them needs no ratings), with the cut-offs; a committed grading script reads only those files and records their SHA-256 hashes in the log. The working tree must be clean: `validity.open_lockbox()` refuses while git shows anything uncommitted in the repository, untracked files included, and logs the calling script; code outside the repository escapes that check, hence the committed script. Then open it once, and report each advisor's test-set precision with a 95% interval. If it is more than 3 percentage points below the expected value, investigate on the development set only, and disclose |
+| 2.8, revised | Measured on the development set, before the test set is opened | For each ordered pair of advisors: the correlation between one model's out-of-fold errors (predicted minus true rating) and the other model's predicted rating on the same grids, over all of them and over those the first model approves, and the first model's precision on grids the second also approves, with Wilson intervals. Disclose; use in Stage 4's chance of passing all four; models are not re-chosen on it. The co-rated test-set grids give a small supplementary check when the test set is opened |
+| 3.1, revised | The design generator (the Stage 3 method that creates new grids) produces no designs by the end of 6 November | Submit a dataset-only selection first (100 grids chosen by the models from the unrated dataset grids, with no new designs); continue development |
+| 3.3, revised | Three half-splits of each advisor's development set are drawn (seeds 31, 32 and 33). In each, model A trains on one half and model B on the other, each with its approval cut-off set at 98% precision on the half it did not train on; B *rejects* a grid it predicts below its cut-off. Each split's A models produce 100 of the 300 pilot designs. The baseline is unrated dataset grids that the same A models approve for all four advisors, matched to the designs on this advisor's margin above A's cut-off (bins of 0.01). For some advisor, B rejects the designs more often than the baseline, significantly at the one-sided 5% level (Cochran–Mantel–Haenszel test, with split and margin bin as strata). The *excess rejection rate* is the designs' rate minus the matched rate | Raise that advisor's safety margin (how far above 0.75 a design's predicted ratings must be) |
+| 3.5, revised | The independent check model (a second model with different inputs, used to catch the primary model's errors; see the entry of 25 October on the primary model) rejects a batch of at least 100 designs more often than it rejects unrated dataset grids that the primary model approves for all four advisors, matched on the primary model's margin above its cut-off (bins of 0.01), significantly at the one-sided 5% level (Cochran–Mantel–Haenszel test). Both are the final refits that check designs, so no ratings are needed; the check model is the CNN procedure's final refit, its settings chosen by its inner search alone | Tighten the safety margin and the similarity-to-training-data requirement (how close a design must be to rated grids, so that the models are not extrapolating) before generating more |
+| 3.6, revised | The 100 designs chosen from a 300-design pilot (a trial batch) by greedy max-min diversity do not exceed the diversity score of the dataset-only fallback selection: 100 grids chosen by the same greedy max-min rule from a random 300 of the dataset grids approved for all four advisors, computed and recorded in Stage 2 before the pilot (both scored by `scoring.diversity`, treating all 100 as valid) | Require designs to cover different district compositions |
+| 4.2, revised | The rotation test has not passed. The test: submit a set, then the same set rotated by 90°, then the same set reflected; it passes if all three scores are equal | Submit no rotated copies; after it passes, at most four copies per design. If rule 2.2 finds that orientation matters for any advisor, no rotated or reflected copies are submitted, whatever the test shows |
+| 4.4, revised | The first submission of generated designs has not been scored | Multiply each designed grid's estimated pass probability (its estimated chance of passing all four advisors, from Stage 2's calibration) by max(0, 1 − 2r), where r is the largest per-advisor excess rejection rate found by rule 3.3 (against its matched baseline), or 0 if none is positive |
 
 **Notes.**
 - **Rotated copies (rules 2.2 and 4.2).** If the advisors ignore orientation, each valid design's
   seven rotations and reflections are also valid. Each differs from the original cell by cell, so it
   adds diversity. Rules 2.2 and 4.2 test the assumption before any copy is submitted.
-- **Why rule 2.2 uses R².** The rule asks whether position explains any part of the ratings at all.
-  R² measures prediction error across the whole 0–1 range, whereas the approval count reflects only
-  the top of it.
+- **Why rule 2.2 uses mean squared error.** The rule asks whether position explains any part of the
+  ratings at all. Error across the whole 0–1 range measures that, whereas the approval count reflects
+  only the top of it.
 
-## Variant cap: at most six per role
+## Procedure cap (from 28 October; replaces the variant cap)
 
-A variant counts toward the cap if a decision depends on comparing it. The role names in code
-(`Variant.role` in `validity.py`) are given in brackets.
+At most six *decision-bearing procedures* per advisor are compared at the outer level of Stage 2's
+nested cross-validation, the incumbent included (see the 28 October entry on the Stage 2 protocol).
+- A procedure is a search space, a search method and a final refit. Configurations tried inside its
+  search don't count.
+- A procedure counts from its first prediction on an outer validation fold, if those results could
+  lead to its adoption. That includes quick screens, rule 2.2's true-orientation arm and rule 2.4's
+  formula. Diagnostics that cannot be adopted don't count: rule 2.2's re-oriented arm and rule 2.3's
+  error model.
+- A procedure changed after its outer results were seen gets a new name and counts again.
+- The starting incumbent is Stage 1's primary model, GBM on the 75 engineered features. After an
+  adoption, the adopted procedure is the incumbent, for the adoption rule, the quick screen and
+  rule 2.4. Stage 1's three baselines (`ridge_onehot`, `gbm_onehot`, `ridge_engineered`) are
+  references, not candidates.
+- Part 2 lists more ideas than the five challenger slots. An idea becomes a challenger only when it
+  is registered, before any of its outer results exist; a benchmark that is never registered (such
+  as FLAML's) cannot be adopted.
 
-| Role | Declared | Planned |
-|---|---|---|
-| Baseline, for reference only (`baseline`) | `ridge_onehot`, `gbm_onehot`, `ridge_engineered` | None |
-| Primary model (`main`) | `gbm_engineered` | Stage 2 feature-study candidates (up to five more) |
-| Independent check model (`second_opinion`) | None | Stage 2 CNN variants: with rotation augmentation; with larger filters; with a deeper network (more layers) |
-
-*Open question (26 October audit).* The project plan capped comparisons at six variants per advisor
-in total; this table applies six per role, which allows more. Two further variants were compared in
-the planning experiments and count under the rule above: GBM on engineered features plus the
-one-hot inputs, and the CNN with rotation augmentation. Which cap applies must be settled before
-Stage 2.
+Until 28 October, the cap was six variants: per advisor in the plan, per role in this log's table
+(an open question in the 26 October audit). GBM on engineered features plus the one-hot inputs was
+compared outside the scorecard (planning experiments, 26 October audit, 28 October verification);
+in Stage 2 it is rule 2.2's true-orientation arm, which counts as a procedure. A CNN with rotation
+augmentation was compared only in the planning experiments; it is re-examined inside the CNN
+procedure.
 
 ---
 
@@ -113,8 +127,9 @@ audit found it missing.
    - It then fitted both on all ratings, screened all 500,000 grids, and estimated final scores at
      several prediction cut-offs.
    - It saved `data/cache/preds_lightgbm.npy`, in which every rated grid's prediction was replaced
-     by its true rating, test set included. No code has read that file since, and it should be
-     deleted.
+     by its true rating, test set included. After the split, only the 26 October audit opened it,
+     reading its header and its values at development-set positions to confirm what it held; no
+     test-set position was read. It was deleted on 28 October without being opened again.
 3. **An independent review of the project strategy,** which ran its own exploratory models. It
    started at 08:39, a minute after the planning script had fixed the GBM settings, the engineered
    features and the test-set recipe.
@@ -209,9 +224,9 @@ brackets, and the share of the advisor's truly passing grids that are approved.
 - **Completion check passed.** The largest difference in R² from the planning experiments is
   0.0052, for GBM on one-hot inputs on Business (tolerance 0.01). It compares the scorecard's
   three-shuffle mean with the planning value, which used the first shuffle only.
-- **R² noise threshold (for rule 2.2).** For the primary model: Wellness 0.009, Tax 0.002,
-  Transportation 0.005, Business 0.004. A position-dependent feature must improve R² by more than
-  these values to count.
+- **R² noise threshold.** For the primary model: Wellness 0.009, Tax 0.002, Transportation 0.005,
+  Business 0.004. Until 28 October, rule 2.2 required a position-dependent feature to improve R² by
+  more than these values; it now uses a paired test (see the rules).
 - **A margin above 0.75 is necessary.**
   - At a predicted-rating cut-off of exactly 0.75, the primary model approves grids that truly fail:
     77 for Wellness, 34 for Tax, 47 for Transportation and 30 for Business (first shuffle; shown in
@@ -253,7 +268,9 @@ reproduced.*
   approves 4–11% fewer. Lowering it to 95% approves 11–25% more but more than doubles the invalid
   grids.
 - **Scope.** This is a criterion for comparing models only.
-  - Rule 2.2 is the exception: it uses R² (see the notes under the rules).
+  - Rule 2.2 is an exception: it uses mean squared error (see the notes under the rules).
+  - From Stage 2, adopting a model also needs a paired test on per-fold `hp_recall` (see the Stage 2
+    protocol).
   - The safety margin for submitted designs is set by the Stage 3 margin experiment (rule 3.3).
   - The final 100 grids are chosen in Stage 4 by expected score: the score averaged over the
     possible outcomes of which grids turn out valid (README, "Validity and diversity together").
@@ -342,3 +359,216 @@ fourth analysis that used every rating.
 **Action.** The documents were corrected on 26 October. The code was left unchanged so that it could
 be studied as it was; the code changes the audit suggests (bug fixes, missing tests, and a fuller
 saved-prediction fingerprint) await review before Stage 2.
+
+### 28 October 2026: Audit fixes applied before Stage 2
+
+The fixes came in two rounds: the first from the 26 October audit, the second from a read-only
+verification of the first round by four independent reviewers the same day.
+
+**What changed.**
+- **Saved-prediction fingerprint** (`validity.cache_key`): it now covers the grids themselves, the
+  model inputs built from them, and the NumPy and SciPy versions. Editing a feature definition, or
+  passing different grids under the same row numbers, can no longer reuse old predictions. What it
+  still does not cover is listed in `stage1_evaluation.md` ("How the code fits together").
+- **Correctness:**
+  - `approved_at` never stops inside a group of tied predictions;
+  - a shuffle that approves nothing no longer turns an advisor's cut-off into "none";
+  - `--grid` handles negative grid numbers, and a number outside the range stops with the valid
+    range;
+  - `score()` works for one to three shuffles (for example, a one-shuffle screen);
+  - the featurizers accept an empty batch;
+  - Figure 7 draws every prediction: Figures 6 and 7 widen their vertical range only when a
+    prediction falls outside it;
+  - Figure 4's code lists above the plot any precision level that no count reaches, or that is
+    reached beyond the plotted range.
+- **`setup_data.sh`:** `--update` fetches the pinned commit before comparing, which removes the
+  false "utils_public.py CHANGED" alarm; a missing or malformed pin file now stops with a message
+  and exit code 3.
+- **Test set:** `open_lockbox()` refuses to open while git shows anything uncommitted in the
+  repository, untracked files included whatever git's settings say, and refuses a folder without
+  its own repository (rule 2.7). The log records the full commit hash and the calling script.
+- **Starter notebook:** its ratings cell hides the test-set ratings when run locally; on Colab,
+  where it cannot, it stops with a message.
+- **Deleted:** `data/cache/preds_lightgbm.npy`.
+- **Tests:** 44 in all. New ones cover:
+  - a spy model that refuses to predict any grid it trained on, or a rotated or reflected copy of
+    one, with and without augmentation, and a fresh model each round;
+  - the 8 orientations;
+  - a confirmed test-set opening on made-up data, and refusals (unconfirmed, or with anything
+    uncommitted) that load and log nothing;
+  - untracked, edited and staged files counting as uncommitted, whatever git's settings say, and a
+    folder without its own repository refused;
+  - ties and no approvals;
+  - a single shuffle;
+  - empty input;
+  - a clean course clone;
+  - a fingerprint that tracks grids, inputs, library versions, the number of folds and
+    augmentation.
+- **Fault injection:** four new faults: models trained on the grids they predict; with
+  augmentation, each round trained on every grid; one model reused across rounds; an orientation
+  helper that stops rotating. All seven faults are caught.
+- **Environment:** Optuna 5.0.0, FLAML 2.7.0 and XGBoost 3.4.2 (needed by FLAML's AutoML) added.
+  GitHub's test environment uses `matplotlib-base`.
+
+**Verification.** The new fingerprint forced a full recompute (7 minutes). All 16 new prediction
+files are bit-for-bit identical to the earlier ones, so every Stage 1 number is unchanged, for
+example approval counts of 534, 828, 744 and 836. The documentation figures are byte-identical, and
+so are the analysis notebook's, except Figure 7, which now draws every prediction.
+
+*Source:* `pytest`; `python tests/fault_injection.py`; `python validity.py`. The bit-for-bit check
+was a one-off comparison of the old and new cache files.
+
+### 28 October 2026: Stage 2 protocol (recorded before the Stage 2 harness ran)
+
+*Basis.* The Stage 2 plan (`plan.md`, Part 2, approved 28 October), refined by an independent design
+review and revised after the read-only verification, both the same day. It settles the open
+decisions listed in the 26 October audit entry. The Stage 2 harness had not run. The audit and the
+verification had already run rule 2.2's comparison, and the verification had compared its
+true-orientation arm with the incumbent; these and the other results already known are listed under
+"Disclosure" below.
+
+**Folds.**
+- **Outer:** Stage 1's five folds under all three shuffles (`cv_splits`, seeds 0, 1 and 2), for each
+  advisor. Every procedure's outer predictions line up fold by fold with Stage 1's, so comparisons
+  are paired.
+- **Inner:** four folds, one shuffle, inside each outer training set (2,400 training and 800
+  validation grids). The inner folds are seeded by the outer shuffle and fold, and shared by every
+  procedure.
+- **Multi-task procedures:** each fold is the union of the four advisors' folds. This is valid
+  because the development sets are disjoint across advisors.
+- **Quick screening:** a run on shuffle 1 alone may only *drop* a procedure, when its approval count
+  is below 90% of the incumbent's on shuffle 1. Adopting a procedure needs all three shuffles. A
+  screened procedure counts toward the cap; a screen that uses only inner scores does not.
+
+**What a search optimizes (inner).**
+- `hp_recall`: the share of truly passing grids approved, averaged over precision levels of 96%,
+  97%, 98% and 99%, on the pooled inner out-of-fold predictions.
+- It is rule 1.3's quantity, averaged over nearby levels; pooled over 3,200 grids, it rests on more
+  than a handful of failures.
+- Stopping weak trials early, and greedy selection of feature groups, use inner mean squared error
+  instead, because it is smoother.
+
+**What decides (outer).** A challenger replaces the incumbent (the procedure in use for that
+advisor; see "Procedure cap") only if both hold:
+- **The paired test:** its per-fold `hp_recall` is higher, significantly at the one-sided 5% level:
+  corrected t ≥ 1.761 (Nadeau–Bengio, 15 folds, 14 degrees of freedom).
+- **The margin:** its approval count at 98% precision (mean over the three shuffles) is at least 3%
+  higher.
+
+Each challenger is tested on its own, with no correction across challengers (the owner's choice;
+see "Disclosure"). Otherwise the incumbent stays. Effects are reported with 95% intervals from a
+paired bootstrap over grids. Rule 2.4's formula is decided by that rule instead.
+- **When.** A challenger is registered before any of its outer results exist, and tested at the end
+  of the first session in which its 15-fold outer predictions are complete. The challengers tested
+  at the end of a session are all compared with the incumbent in force at the start of that
+  session; if several pass, the one with the highest approval count is adopted. Rule 2.2's
+  true-orientation arm is the exception to registering first: the verification already ran it, so
+  it is registered now and tested at the end of Session 1.
+- **Why these values.** In 80 comparisons between identical models trained with different random
+  seeds, none passed both tests. The largest corrected t was 1.01; approval counts differed with a
+  standard deviation of 0.5–1.7% (by advisor), and in 1 of the 80 the challenger approved 3% more.
+- **What is risked.** Without a correction across challengers, each challenger with no real gain
+  keeps up to a 5% chance of passing the paired test. Such a model approves about as many grids as
+  the incumbent, at about the same precision. Rule 2.7 checks precision only, so it would catch a
+  large shortfall (about 3 points or more) but not a chance adoption; that cost is accepted.
+- **Limitation.** Per fold (800 grids), the primary model's 98% and 99% levels rest on 0–3
+  failures, so per-fold `hp_recall` is coarse. The margin, on the pooled approval count, is the
+  second safeguard.
+
+**Cap:** at most six decision-bearing procedures per advisor (see "Procedure cap" above).
+
+**Stacking, ensembles and calibration.** Anything a procedure learns from data is learned inside
+each outer training set.
+- A stacker's or blender's inputs for the outer-training grids are inner out-of-fold predictions;
+  for the outer validation grids, they come from the base models refit on the whole outer training
+  set.
+- Ensemble weights, early-stopping epochs and any calibration inside a compared procedure are
+  chosen inside the outer training set.
+- A stacker's base procedures are those registered for that advisor when the stacker is
+  registered, or a subset chosen by inner scores alone.
+- The nested harness never reads Stage 1's saved predictions (`data/cache/oof/`): each was made by a
+  model that trained on the other outer folds.
+- The spy test (`test_out_of_fold_never_trains_on_the_grids_it_predicts`) is extended to the harness
+  and to any stacker.
+
+**Checks built into the harness.**
+- **Registry:** the harness keeps each advisor's list of procedures and refuses to score an unlisted
+  one on outer folds; a test checks the list against the cap.
+- **Reproduction:** the "no search" procedure must reproduce Stage 1's out-of-fold predictions.
+- **Selection by inner score:** in each outer fold, choose the procedure by its inner score alone.
+  This is reported alongside as an indicative check on choosing the winner from outer results. It
+  favours heavily searched procedures, whose inner score is the best of many trials.
+
+**Calibration.**
+- Each advisor's predicted rating becomes a chance of passing, cross-fitted on out-of-fold
+  predictions.
+- The method (isotonic regression, or a probit that widens with the models' disagreement) is chosen
+  by cross-fitted log loss on grids predicted at least 0.6.
+- Grids approved for all four advisors are rare among rated grids. Stage 2 measures how much more
+  two half-models disagree on such unrated grids than on grids approved for one advisor, and the
+  calibration's uncertainty there reflects it.
+
+**Compute.** Part 2's time estimates assumed shuffle 1 alone and fewer inner folds; under these folds
+a GBM search costs about four times as much. Session 1 times the harness and records a budget here
+before any outer result. If it does not fit, the cheaper options, fixed now, are:
+- fewer search trials;
+- neural networks choosing their settings on one inner 80/20 split, as Part 2 planned (a network
+  that feeds a stacker still needs all four inner folds);
+- screening on shuffle 1 first.
+
+**Changes from Part 2, with reasons.**
+- **Outer folds:** all three shuffles (15 folds), not shuffle 1 alone (5). A paired test on 5 folds
+  has 4 degrees of freedom and little power.
+- **Inner folds:** four, shared by every procedure, instead of three for GBM and one 80/20 split for
+  neural networks. Every outer-training grid then gets an inner out-of-fold prediction, which
+  stacking needs, and inner scores are comparable across procedures.
+- **Search target:** `hp_recall`, instead of the error for true ratings 0.6–0.9, because it is the
+  quantity the decision is about.
+- **Decision:** a paired test on per-fold `hp_recall` at the exact one-sided 5% value for 15 folds
+  (1.761), instead of a paired test on the approval count with corrected t ≥ 2. Per fold, the
+  primary model's approval count at 98% rests on 1–3 failures. The margin keeps the approval count
+  in the decision.
+- **Cap:** Part 2's "declared procedures" are defined under "Procedure cap": what counts, and from
+  when.
+
+**Disclosure: results known when this protocol was set (development set only).**
+- **Rule 2.2:** the 26 October audit had already run its comparison: true-orientation inputs beat
+  re-oriented ones for Wellness (corrected t 5.3) and Tax (t 3.1). Single re-orientation draws give
+  Tax t from 2.0 to 3.5, and five of them, combined as the rule now says, gave t 3.4. The rule was
+  worded knowing this; its seeds (1 to 5) are new.
+- **The adoption rule:** the verification compared GBM on engineered features plus one-hot inputs
+  (rule 2.2's true-orientation arm) with the incumbent. For Wellness, the approval count rose from
+  534 to 575 (+7.8%), with per-fold `hp_recall` higher in 13 of 15 folds (corrected t 1.999). That
+  passes the rule as chosen, and would fail under a Holm correction (a stricter threshold for each
+  of several challengers) with two or more challengers. An earlier draft of this entry used a Holm
+  correction; the owner chose the present rule knowing this result.
+- **The margin:** the earlier draft's 2% sat within the seed-to-seed spread above, so it was raised
+  to 3%. The Wellness result clears both.
+- **Rules 3.3, 3.5 and 3.6:** the verification measured, on the development set and unrated grids,
+  how often a second model rejects grids at each margin above the cut-off, including grids approved
+  for all four advisors, where two half-models disagree more; and the diversity of dataset-only
+  selections. These shaped the revised rules; no design existed yet.
+- **The formula hunt:** its lead (up to 61 Transportation grids sharing one rating) came from all
+  4,000 development-set ratings. The hunt itself uses shuffle 1's folds 1–3 only (rule 2.4).
+
+*Source.* Every number in this entry comes from one-off scripts run during the two verification
+rounds, not in the repository. Session 1's harness recomputes rule 2.2's comparison, the Wellness
+adoption test, the seed-to-seed comparisons and the per-fold failure counts, and this entry will then
+cite it.
+
+**Rule revisions** (marked "revised" in the rules table):
+- **The audit's findings:** paired comparisons instead of the R² noise threshold (2.2), rule 2.8
+  measured on the development set, exact measurements and baselines for 2.3, 2.4, 3.3, 3.5, 3.6, 4.2
+  and 4.4, and an interval for the test-set grade (2.7).
+- **The verification's findings:**
+  - margin-matched baselines for 3.3 and 3.5, and a bounded factor in 4.4;
+  - rule 2.4's formula must also approve as many grids as the incumbent;
+  - an explicit threshold and consequences for 2.2, with 4.2 tied to it;
+  - rule 2.7 names the graded model, and the code enforces its clean working tree;
+  - exact measurements for 2.3 and 2.8, and a defined reference selection for 3.6;
+  - rule 1.3 states the whole adoption rule;
+  - second round: rules 3.3 and 3.5 compare with grids approved for all four advisors; when
+    challengers are tested; rule 2.2's draws defined; rule 2.3's error model and rule 3.5's check
+    model defined; the formula hunt's data access limited; rule 2.7 commits the graded predictions
+    and the grading script.
+- **The new schedule:** rule 3.1's date moves from 28 October to 6 November, chosen by the owner.
