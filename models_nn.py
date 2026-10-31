@@ -43,7 +43,7 @@ SPACE = {  # each combination is one setting; the search tries TRIALS of them
     "augment": (False, True),  # train on random rotations and mirrors
     "lr": (1e-3, 3e-3),  # learning rate
 }
-TRIALS = 16
+TRIALS = 10  # cut from 16 to fit overnight (docs/decisions.md, compute budget)
 MAX_EPOCHS = 60
 PATIENCE = 8  # epochs without a better validation error before an inner fit stops
 BATCH = 128

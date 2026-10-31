@@ -595,3 +595,14 @@ cite it.
 - The CNN search (slot 4): estimated 4–5 h overnight; confirmed with
   `python search.py --time NAME --trials 1` before its run. If over 8 h, the protocol's cheaper
   options apply: fewer trials first.
+- CNN, timed 31 October (`python search.py --time cnn --trials 1`): one-setting rounds took
+  88–871 s, so 16 settings per round would need about 9 h. Cut to 10 (the protocol's first
+  cheaper option): about 5–6 h for all 60 rounds.
+
+### 31 October 2026: Rule 2.2 result (`python search.py --rule-2-2`)
+
+- Position matters for Wellness (t 5.95), Tax (4.69) and Business (2.96); not Transportation
+  (−1.07). So: no rotated training copies for those three (CNN registered accordingly), and no
+  rotated or mirrored copies of designs in any submission (rule 4.2).
+- Label-free check: the dataset's own grids are slightly position-dependent (largest gap in a
+  district's share between mirror-image cells 1.50%).

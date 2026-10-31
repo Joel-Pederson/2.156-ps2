@@ -80,6 +80,7 @@ import sklearn
 from sklearn.model_selection import KFold
 
 import features
+import models_nn
 import validity
 from validity import ADVISORS, CV_FOLDS, CV_REPEATS
 
@@ -266,6 +267,20 @@ REGISTRY = {
         slot=2,
         summary="rule 2.2's true-orientation arm: GBM on the 75 engineered features and the "
         "245 one-hot inputs, which record each cell's position",
+    ),
+    # Slot 4, registered 31 October after rule 2.2: position matters for Wellness, Tax and
+    # Business, so their CNN may not train on rotated copies; Transportation's may.
+    "cnn": models_nn.CNNSearch(
+        slot=4,
+        summary="CNN search; no rotated training copies",
+        advisors=("Wellness", "Tax", "Business"),
+        augment_allowed=False,
+    ),
+    "cnn_with_rotations": models_nn.CNNSearch(
+        slot=4,
+        summary="CNN search; rotated training copies are one of its options",
+        advisors=("Transportation",),
+        augment_allowed=True,
     ),
 }
 
@@ -692,6 +707,7 @@ def _outer(name, data, workers, use_cache, run):
         advisor, r, val = places[i]
         preds[advisor][r, val], record = result
         rounds[advisor].append(record)
+        _progress(name, sum(map(len, rounds.values())), len(jobs), tic)
         if len(rounds[advisor]) < ROUNDS:
             return
         found[advisor] = preds[advisor]
@@ -720,6 +736,19 @@ def _outer(name, data, workers, use_cache, run):
 
     _execute(jobs, workers, done)
     return found
+
+
+def _progress(name, finished, total, tic):
+    """One line per finished round: a bar, the time so far, and a rough time left (rough at
+    first, because rounds run side by side and the first ones all finish late)."""
+    elapsed = time.perf_counter() - tic
+    left = elapsed / finished * (total - finished)
+    bar = "#" * round(20 * finished / total)
+    print(
+        f"{name}: [{bar:<20}] {finished}/{total} rounds · {elapsed / 60:.0f} min so far · "
+        f"about {left / 60:.0f} min left",
+        flush=True,
+    )
 
 
 def _advisor_data(grids, dev, advisor):
