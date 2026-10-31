@@ -1,6 +1,6 @@
-"""Checks the checks: inject seven realistic faults and confirm a test catches each one.
+"""Checks the checks: inject eleven realistic faults and confirm a test catches each one.
 
-A test that has never failed proves little. This script breaks the code in seven ways that
+A test that has never failed proves little. This script breaks the code in eleven ways that
 would corrupt results without any crash. For each fault it first runs the matching test on the
 unchanged code (it must pass), then applies the fault and runs the test again (it must fail).
 Faults are applied in memory only; no file is changed.
@@ -26,8 +26,10 @@ sys.path[:0] = [os.path.dirname(HERE), HERE]  # the repository root and tests/
 import conftest
 import test_features
 import test_protocol
+import test_search
 
 import features
+import search
 import validity
 
 
@@ -79,6 +81,29 @@ def unrotated_orientations(grids):
     return np.stack([grids] * 8)
 
 
+def leaky_round_data(grids, y, train, val):
+    """A leak in Stage 2's harness: the outer-validation grids are handed over to learn from."""
+    everything = np.concatenate([train, val])
+    return grids[everything], y[everything], grids[val]
+
+
+def unshared_inner_seed(shuffle, fold):
+    """Inner folds drawn afresh on every call, so procedures no longer search on the same ones."""
+    return int(np.random.default_rng().integers(2**31))
+
+
+def uncorrected_t(diffs, n_train, n_val):
+    """The ordinary paired t, as if the folds' overlapping training sets were independent."""
+    d = np.asarray(diffs, float)
+    return float(d.mean() / (d.std(ddof=1) / np.sqrt(len(d))))
+
+
+def run_harness_spy_test():
+    """Runs the harness spy test outside pytest, supplying its temporary folder and monkeypatch."""
+    with tempfile.TemporaryDirectory() as tmp, pytest.MonkeyPatch.context() as mp:
+        test_search.test_no_procedure_sees_the_grids_it_predicts(pathlib.Path(tmp), mp)
+
+
 def run_out_of_fold_spy_test(augment=False):
     """Runs the spy test outside pytest, supplying its temporary folder and monkeypatch."""
     with tempfile.TemporaryDirectory() as tmp, pytest.MonkeyPatch.context() as mp:
@@ -125,6 +150,26 @@ FAULTS = [
         "The orientation helper stops rotating",
         (features, "orientations", unrotated_orientations),
         test_features.test_orientations_are_the_eight_rotations_and_mirrors,
+    ),
+    (
+        "Stage 2's harness hands a procedure its outer-validation grids to learn from",
+        (search, "_round_data", leaky_round_data),
+        run_harness_spy_test,
+    ),
+    (
+        "One procedure instance is reused across outer rounds",
+        (search, "_fresh", lambda procedure: procedure),
+        run_harness_spy_test,
+    ),
+    (
+        "Each procedure gets freshly drawn inner folds",
+        (search, "inner_seed", unshared_inner_seed),
+        test_search.test_inner_folds_split_each_outer_training_set_the_same_way_for_every_procedure,
+    ),
+    (
+        "The paired t-test loses its correction for overlapping training sets",
+        (search, "corrected_t", uncorrected_t),
+        test_search.test_corrected_t_widens_the_ordinary_t_for_overlapping_training_sets,
     ),
 ]
 

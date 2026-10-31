@@ -313,7 +313,7 @@ def test_a_confirmed_opening_returns_only_test_set_ratings_and_logs_it(
 
 def test_declared_variants_respect_the_cap():
     """Stage 1's cap: at most six variants per role. Stage 2's procedure cap (per advisor;
-    docs/decisions.md) will be checked by the Stage 2 harness."""
+    docs/decisions.md) is checked in tests/test_search.py."""
     roles = [v.role for v in validity.VARIANTS.values()]
     for role in set(roles):
         assert roles.count(role) <= validity.MAX_VARIANTS_PER_ROLE, role
