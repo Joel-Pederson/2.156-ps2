@@ -723,7 +723,7 @@ Each figure is saved by `_save()` into `docs/figures/` at 150 dpi.
 | `tests/test_palette.py` | The figure colours | `plots.DISTRICT_COLOURS`, `plots.SURFACE` |
 | `tests/test_pin.py` | The course data version | `validity.course_pin()` against the commit checked out in `data/cp2-repo/`, and no edited files in that clone |
 | `tests/conftest.py` | Shared setup, not a test | Supplies test grids, and skips data-dependent tests when the course data is missing (on GitHub, they fail instead) |
-| `python tests/fault_injection.py` | That the tests catch seven faults | Five tests from `test_protocol.py` and `test_features.py` (the spy test against three of the faults), each run on the unchanged code and then with a fault applied in memory |
+| `python tests/fault_injection.py` | That the tests catch eleven faults | Seven for Stage 1 (below) and four for Stage 2's harness (`tests/test_search.py`), each test run on the unchanged code and then with a fault applied in memory |
 | GitHub: `.github/workflows/tests.yml` | Every push and pull request | Runs `./setup_data.sh`, builds the environment from `environment-ci.yml`, then runs `pytest` |
 | GitHub: `.github/workflows/course-updates.yml` | Daily, once the file is on `main` | Runs `./setup_data.sh --check` |
 
@@ -776,7 +776,8 @@ push. Each check guards against an error that would corrupt results without caus
 | Every pair of district colours remains distinguishable, including under simulated colour blindness | Figures in which two districts look alike |
 | The downloaded course data matches the pinned commit, with no edited files | Building on course data that has changed |
 
-The checks were themselves tested by introducing seven deliberate faults, and each was detected:
+The Stage 1 checks were themselves tested by introducing seven deliberate faults, and each was
+detected (Stage 2 adds four more for its harness):
 - a changed test-set seed;
 - augmentation before the split;
 - a corrupted feature definition;

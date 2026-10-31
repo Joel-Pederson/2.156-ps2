@@ -572,3 +572,26 @@ cite it.
     model defined; the formula hunt's data access limited; rule 2.7 commits the graded predictions
     and the grading script.
 - **The new schedule:** rule 3.1's date moves from 28 October to 6 November, chosen by the owner.
+
+### 31 October 2026: Harness guard, the six slots, and the CNN first (owner's choices)
+
+- **Outer results need a commit.** `search.py` makes outer predictions only from a fully committed
+  repository and saves the commit with them, so git history shows each procedure was registered
+  before its results existed.
+- **Slots, per advisor:** 1 the incumbent (Stage 1's GBM); 2 rule 2.2's true-orientation arm;
+  3 GBM choosing among feature groups; 4 a CNN search; 5 a tuned GBM (slot 3's search plus GBM
+  settings); 6 a stacker or ensemble. A rule 2.4 formula would take slot 5 or 6 for its advisor.
+  Each slot's exact search space is registered in `search.REGISTRY` before any of its outer results.
+  Plan Part 2's multi-task network has no slot; it would need slot 5 or 6.
+- **Order:** Session 1 is the harness, rule 2.2 and the CNN search, run overnight on 31 October;
+  it ends with the adoption tests on 1 November. The feature groups move to Session 2. Reason: GBM
+  searches take minutes, while the CNN needs overnight compute and no input from the owner. Rule
+  2.2 runs first because its result decides where the CNN may train on rotated copies.
+
+### 31 October 2026: Compute budget (recorded before any Stage 2 outer result)
+
+- GBM procedures, all 60 outer rounds: about 0.3–0.4 min each (`python search.py --time NAME`).
+  Rule 2.2's five controls cost the same.
+- The CNN search (slot 4): estimated 4–5 h overnight; confirmed with
+  `python search.py --time NAME --trials 1` before its run. If over 8 h, the protocol's cheaper
+  options apply: fewer trials first.
