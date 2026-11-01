@@ -44,6 +44,7 @@ from sklearn.model_selection import KFold
 import features
 import features_lab
 import models_nn
+import tables
 import validity
 from validity import ADVISORS, CV_FOLDS, CV_REPEATS
 
@@ -265,6 +266,112 @@ SLOT3_GROUPS = (
     "onehot",
 )
 
+# Slot 5's settings search (Optuna). Ranges are log-scaled where marked. The first trial is
+# Stage 1's settings (validity.GBM_PARAMS), so tuning starts from what is known to work.
+SLOT5_SPACE = {
+    "library": ["lightgbm", "xgboost"],
+    "n_estimators": [200, 2000],  # log
+    "learning_rate": [0.01, 0.1],  # log
+    "leaves": [8, 128],  # LightGBM's tree size, log
+    "depth": [3, 10],  # XGBoost's tree size
+    "subsample": [0.5, 1.0],  # share of grids per tree
+    "colsample": [0.5, 1.0],  # share of features per tree
+}
+STAGE1_SETTINGS = {"library": "lightgbm", "n_estimators": 600, "learning_rate": 0.03}
+STAGE1_SETTINGS |= {"leaves": 31, "subsample": 0.8, "colsample": 0.8}
+
+
+def _suggest(trial):
+    """One trial's settings, drawn by Optuna from SLOT5_SPACE."""
+    space, out = SLOT5_SPACE, {}
+    out["library"] = trial.suggest_categorical("library", space["library"])
+    for key in ("n_estimators", "learning_rate"):
+        kind = trial.suggest_int if key == "n_estimators" else trial.suggest_float
+        out[key] = kind(key, *space[key], log=True)
+    if out["library"] == "lightgbm":
+        out["leaves"] = trial.suggest_int("leaves", *space["leaves"], log=True)
+    else:
+        out["depth"] = trial.suggest_int("depth", *space["depth"])
+    for key in ("subsample", "colsample"):
+        out[key] = trial.suggest_float(key, *space[key])
+    return out
+
+
+def _model(settings):
+    """An unfitted GBM with these settings; one thread (see the header)."""
+    common = {"n_estimators": settings["n_estimators"], "random_state": 0, "n_jobs": 1}
+    common |= {
+        "learning_rate": settings["learning_rate"],
+        "subsample": settings["subsample"],
+    }
+    common |= {"colsample_bytree": settings["colsample"]}
+    if settings["library"] == "lightgbm":
+        import lightgbm as lgb
+
+        leaves = settings["leaves"]
+        return lgb.LGBMRegressor(
+            **common, num_leaves=leaves, subsample_freq=1, verbose=-1
+        )
+    import xgboost as xgb
+
+    return xgb.XGBRegressor(**common, max_depth=settings["depth"], tree_method="hist")
+
+
+@dataclass(frozen=True)
+class TunedGroupGBM(GroupSearchGBM):
+    """Slot 5: slot 3's group search, then `trials` Optuna trials of GBM settings on the
+    chosen groups, each scored by inner hp_recall; the best settings are refit."""
+
+    trials: int = 40
+
+    def spec(self):
+        extra = {
+            "space": SLOT5_SPACE,
+            "first_trial": STAGE1_SETTINGS,
+            "trials": self.trials,
+        }
+        return super().spec() | {"kind": "tuned_group_gbm"} | extra
+
+    def library_versions(self):
+        import optuna
+        import xgboost
+
+        return {"optuna": optuna.__version__, "xgboost": xgboost.__version__}
+
+    def _inputs(self, grids, groups):
+        blocks = self.blocks(grids)
+        return np.hstack([blocks[g] for g in ("base", *groups)])
+
+    def search(self, grids, y, inner):
+        import optuna
+
+        groups, record = super().search(grids, y, inner)
+        X = self._inputs(grids, groups)
+
+        def score(trial):
+            settings = _suggest(trial)
+            fit = lambda a, b, c: _model(settings).fit(a, b).predict(c)
+            return hp_recall(inner_predictions(fit, X, y, inner), y)
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        sampler = optuna.samplers.TPESampler(seed=0)  # same draws for the same scores
+        study = optuna.create_study(direction="maximize", sampler=sampler)
+        study.enqueue_trial(STAGE1_SETTINGS)
+        study.optimize(score, n_trials=self.trials)
+        tried = [t.params | {"inner_hp_recall": t.value} for t in study.trials]
+        record = record | {"groups_inner_hp_recall": record["inner_hp_recall"]}
+        record |= {"inner_hp_recall": study.best_value, "tried": tried}
+        return {"groups": groups, "settings": study.best_params}, record
+
+    def fit(self, choice, grids, y):
+        X = self._inputs(grids, choice["groups"])
+        return choice, _model(choice["settings"]).fit(X, y)
+
+    def predict(self, model, grids):
+        choice, gbm = model
+        return gbm.predict(self._inputs(grids, choice["groups"]))
+
+
 REGISTRY = {
     "gbm_engineered": FixedGBM(
         ("engineered",),
@@ -281,6 +388,12 @@ REGISTRY = {
     "gbm_groups": GroupSearchGBM(
         slot=3,
         summary="GBM on the 75 features plus up to 3 feature groups, chosen per round",
+        groups=SLOT3_GROUPS,
+    ),
+    # Slot 5, registered 1 November: slot 3's search, then Optuna (owner's choice).
+    "gbm_tuned": TunedGroupGBM(
+        slot=5,
+        summary="slot 3's group search, then 40 Optuna trials of GBM library and settings",
         groups=SLOT3_GROUPS,
     ),
     # Slot 4, registered 31 October after rule 2.2: position matters for Wellness, Tax and
@@ -301,8 +414,9 @@ REGISTRY = {
 
 # Each advisor's recipe in force; changes only with an adoption in docs/decisions.md.
 INCUMBENT = dict.fromkeys(ADVISORS, "gbm_engineered")
-# Adopted 1 Nov, at the end of Session 1 (docs/decisions.md).
+# Adoptions (docs/decisions.md): 1 Nov, at the end of Sessions 1 and 2.
 INCUMBENT["Wellness"] = "gbm_engineered_onehot"
+INCUMBENT["Business"] = "gbm_groups"
 
 
 def procedures_for(advisor):
@@ -375,6 +489,11 @@ def describe(procedure):
             f"{len(procedure.groups)} candidates:"
         )
         lines.append("    " + ", ".join(procedure.groups))
+        if isinstance(procedure, TunedGroupGBM):
+            lines.append(
+                f"  Then {procedure.trials} Optuna trials on the chosen groups:"
+            )
+            lines += [f"    {key:<14} {values}" for key, values in SLOT5_SPACE.items()]
     elif isinstance(procedure, models_nn.CNNSearch):
         allowed = procedure.augment_allowed
         n = len(models_nn.settings(allowed))
@@ -696,9 +815,52 @@ def compare(name, against=None, advisors=None):
     out = {}
     for advisor in advisors or recipe(name).advisors:
         y, other = _advisor_data(grids, dev, advisor)[1], against or INCUMBENT[advisor]
+        if other == name:  # already adopted: nothing to compare it with
+            continue
         mine, theirs = load_outer(name, advisor)[0], load_outer(other, advisor)[0]
         out[advisor] = (other, compare_predictions(mine, theirs, y))
     return out
+
+
+def group_report(name, advisors):
+    """Slot 3's extras, printed and returned as sheets: how many rounds chose each group, and
+    the approvals on shuffle 1's folds 4-5 alone, the grids its candidate screens never read
+    (docs/decisions.md, "Slot 3 registered"). Advisors that adopted the recipe are left out
+    of the folds 4-5 check: it was made against their model from before the switch."""
+    grids, dev = validity.load_dev()
+    counts, clean = {}, []
+    for advisor in advisors:
+        # Slot 3's choice is a list of groups; slot 5's a dict that also holds settings.
+        choices = [r["choice"] for r in load_outer(name, advisor)[1]["rounds"]]
+        picks = [
+            g for c in choices for g in (c["groups"] if isinstance(c, dict) else c)
+        ]
+        counts[advisor] = {g: picks.count(g) for g in recipe(name).groups}
+        if INCUMBENT[advisor] == name:
+            continue
+        y = _advisor_data(grids, dev, advisor)[1]
+        folds = validity.cv_splits(len(y))
+        val = np.concatenate([v for r, f, _, v in folds if r == 0 and f >= 3])
+        mine, theirs = (
+            load_outer(n, advisor)[0][0, val] for n in (name, INCUMBENT[advisor])
+        )
+        n_mine, n_theirs = (validity.approved_at(p, y[val])[0] for p in (mine, theirs))
+        gain = round(100 * (n_mine / max(n_theirs, 1) - 1), 1)
+        clean.append({"Advisor": advisor, "Grids": len(val), "Approved": n_mine})
+        clean[-1] |= {"Approved, current model": n_theirs, "Gain %": gain}
+    print("\nGroups chosen, rounds of 15:")
+    for advisor, n in counts.items():
+        top = sorted((g for g in n if n[g]), key=n.get, reverse=True)
+        print(f"  {advisor:<15} {', '.join(f'{g} {n[g]}' for g in top) or 'none'}")
+    print("Shuffle 1, folds 4-5 only (never screened), approved at 98%:")
+    for r in clean:
+        print(
+            f"  {r['Advisor']:<15} {r['Approved']} vs {r['Approved, current model']}, {r['Gain %']:+.1f}%"
+        )
+    grid = [
+        {"Group": g} | {a: counts[a][g] for a in advisors} for g in recipe(name).groups
+    ]
+    return {"Groups chosen (rounds)": grid, "Folds 4-5 only": clean}
 
 
 # ---- rule 2.2: does a cell's position matter? ----------------------------------------
@@ -792,15 +954,20 @@ def print_registry():
 
 def print_outer(name, results):
     print(f"\n{name}: outer predictions, 15 rounds per advisor; approvals per shuffle")
+    rows = []
     for advisor, (y, preds) in results.items():
         counts = "/".join(str(validity.approved_at(p, y)[0]) for p in preds)
         hp = _per_fold(hp_recall, preds, y).mean()
         print(f"  {advisor:<15} approved at 98%: {counts}; hp_recall {hp:.3f}")
+        rows.append({"Advisor": advisor, "Approved at 98%, per shuffle": counts})
+        rows[-1]["hp_recall"] = hp
+    print("Saved", tables.save(f"run_{name}", {"Outer results": rows}))
 
 
 def print_comparisons(name, comparisons):
     rule = f"adopted if t >= {T_CRITICAL} and at least {MARGIN:.0%} more approved"
     print(f"\n{name} against the incumbent: {rule} at 98% precision [95% intervals]")
+    rows = []
     for advisor, (other, c) in comparisons.items():
         (low, high), (fewest, most) = c.hp_recall_interval, c.approved_interval
         hp = f"{c.hp_recall_diff:+.3f} [{low:+.3f}, {high:+.3f}]"
@@ -810,7 +977,42 @@ def print_comparisons(name, comparisons):
         print(f"  {advisor} against {other}: adopt {'yes' if c.adopt else 'no'}")
         print(f"    t {c.t:.2f}; hp_recall {hp}, {better}")
         print(f"    approved {approved}; {more} grids")
+        row = {
+            "Advisor": advisor,
+            "Against": other,
+            "Adopt": "yes" if c.adopt else "no",
+        }
+        row |= {"t": round(c.t, 2), "Folds better (of 15)": c.folds_better}
+        row |= {
+            "Approved": round(c.approved[0], 1),
+            "Approved, current model": round(c.approved[1], 1),
+        }
+        row |= {
+            "Gain %": round(100 * c.gain, 1),
+            "Extra grids": round(c.approved[0] - c.approved[1], 1),
+        }
+        row |= {
+            "Extra grids, 95% low": round(fewest),
+            "Extra grids, 95% high": round(most),
+        }
+        row |= {"hp_recall difference": round(c.hp_recall_diff, 3)}
+        rows.append(
+            row
+            | {
+                "hp_recall, 95% low": round(low, 3),
+                "hp_recall, 95% high": round(high, 3),
+            }
+        )
+    for advisor in set(recipe(name).advisors) - set(comparisons):
+        print(f"  {advisor}: {name} is its current model (adopted), so not compared")
     print("Decided at the end of the session, against the incumbent at its start.")
+    sheets = {"Adoption test": rows}
+    if isinstance(recipe(name), GroupSearchGBM):
+        sheets |= group_report(name, list(recipe(name).advisors))
+    # A dated name: rerunning after an adoption mustn't overwrite the record of it.
+    print(
+        "Saved", tables.save(f"compare_{name}_{datetime.now():%Y-%m-%d_%H%M}", sheets)
+    )
 
 
 def print_rule_2_2(results, patterns, n_grids):

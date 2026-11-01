@@ -12,4 +12,7 @@ dependencies:
   - lightgbm
   - matplotlib-base  # utils_public.py imports it; "-base" skips the unused Qt GUI toolkit
   - pillow         # utils_public.py imports it
+  - optuna         # slot 5's settings search
+  - xgboost
+  - openpyxl       # tables.py
   - pytest

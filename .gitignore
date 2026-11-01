@@ -21,6 +21,8 @@ venv/
 
 # --- Data & model artifacts (usually too big for git) ---
 data/
+# Excel tables the scripts write (tables.py); rerunning replaces them
+results/
 checkpoints/
 runs/
 wandb/

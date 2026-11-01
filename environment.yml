@@ -23,7 +23,8 @@ dependencies:
   # --- Stage 2 search tools (docs/plan.md, Part 2) ---
   - optuna         # efficient search over model settings
   - flaml          # lightweight AutoML, used as a benchmark
-  - xgboost        # needed by FLAML's AutoML
+  - xgboost        # slot 5 tries it against LightGBM; FLAML needs it too
+  - openpyxl       # writes the Excel tables in results/ (tables.py)
 
   # --- Notebook tooling ---
   - jupyterlab

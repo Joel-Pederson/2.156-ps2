@@ -381,3 +381,45 @@ def test_slot_3_adds_the_group_that_carries_the_signal():
     assert choice[0] == "park access" and len(record["steps"]) == len(choice) + 1
     assert slot3.predict(slot3.fit(choice, grids, y), grids[:5]).shape == (5,)
     assert "3 candidates" in search.describe(slot3)
+
+
+def test_slot_5_tunes_settings_after_the_group_search():
+    rng = np.random.default_rng(4)
+    grids = rng.integers(0, 5, (200, 7, 7)).astype(np.int8)
+    y = scipy.stats.rankdata((grids == 3).sum((1, 2))) / len(grids)
+    slot5 = search.TunedGroupGBM(
+        slot=5, summary="test", groups=("park access",), max_added=1, trials=3
+    )
+    choice, record = slot5.search(grids, y, search.inner_splits(len(y), 0, 0))
+    assert set(choice) == {"groups", "settings"} and len(record["tried"]) == 3
+    first = {k: v for k, v in record["tried"][0].items() if k != "inner_hp_recall"}
+    assert first == search.STAGE1_SETTINGS  # tuning starts from Stage 1's settings
+    assert record["inner_hp_recall"] == max(
+        t["inner_hp_recall"] for t in record["tried"]
+    )
+    assert slot5.predict(slot5.fit(choice, grids, y), grids[:5]).shape == (5,)
+    assert "3 Optuna trials" in search.describe(slot5)
+
+
+def test_stage1_settings_build_stage1_s_gbm():
+    gbm = search._model(search.STAGE1_SETTINGS).get_params()
+    assert all(gbm[k] == v for k, v in validity.GBM_PARAMS.items())
+
+
+def test_group_report_counts_choices_and_scores_only_folds_4_5(monkeypatch):
+    grids, y = _toy_data()
+    monkeypatch.setattr(validity, "load_dev", lambda: (grids, np.tile(y[:, None], 4)))
+    toy = search.GroupSearchGBM(
+        slot=3, summary="toy", groups=("mix", "rings", "halves")
+    )
+    monkeypatch.setitem(search.REGISTRY, "toy", toy)
+    rounds = [{"choice": ["mix"]}, {"choice": ["mix", "rings"]}]
+    rounds.append({"choice": {"groups": ["rings"], "settings": {}}})  # slot 5's form
+    saved = (np.tile(y, (3, 1)), {"rounds": rounds})
+    monkeypatch.setattr(search, "load_outer", lambda name, advisor: saved)
+    sheets = search.group_report("toy", ["Tax"])
+    grid = {r["Group"]: r["Tax"] for r in sheets["Groups chosen (rounds)"]}
+    assert grid == {"mix": 2, "rings": 2, "halves": 0}
+    assert sheets["Folds 4-5 only"][0]["Grids"] == 24  # folds 4 and 5 of 60 grids
+    monkeypatch.setitem(search.INCUMBENT, "Tax", "toy")  # adopted: no folds 4-5 check
+    assert search.group_report("toy", ["Tax"])["Folds 4-5 only"] == []

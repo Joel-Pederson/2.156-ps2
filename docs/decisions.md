@@ -31,6 +31,8 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 1 Nov | Rule 2.3 dropped: the CNN is too weak to reveal missing features | Rule 2.3 dropped |
 | 1 Nov | Harness simplified: 1,158 → 759 lines, outputs bit-identical | Harness simplified |
 | 1 Nov | Slot 3 registered: GBM + up to 3 of 15 feature groups, chosen per round | Slot 3 registered |
+| 1 Nov | Business adopts slot 3 (+8.9%, t 4.45, 15 of 15 folds); Session 2 ends | Slot 3 adoption test |
+| 1 Nov | Slot 5 registered: slot 3's search, then 40 Optuna trials (LightGBM or XGBoost) | Slot 5 registered |
 
 ## The rules in plain words
 
@@ -792,3 +794,48 @@ choices and epochs from the `rounds` and `tried` lists in `data/cache/nested/cnn
 
 *Source:* `features_lab.py`, `search.py` (`GroupSearchGBM`); screens: scratch scripts
 `feature_screen.py` and `place_screen.py`, results in `feature_screen.xlsx` (not in the repo).
+
+### 1 November 2026: Slot 3 adoption test; Business adopts `gbm_groups`; Session 2 ends (owner's choice)
+
+Against the models in force at the start of Session 2 (Wellness: `gbm_engineered_onehot`; the others:
+`gbm_engineered`). Approvals at 98% precision, mean of the 3 shuffles; 95% intervals in brackets.
+
+| Advisor | Corrected t | Folds better | Approved: slot 3 / current | Gain | Adopt |
+|---|---|---|---|---|---|
+| Wellness | −0.51 | 5 of 15 | 559.7 / 575.3 | −2.7% | no |
+| Tax | −0.40 | 7 of 15 | 819.3 / 828.3 | −1.1% | no |
+| Transportation | 0.47 | 10 of 15 | 756.0 / 744.3 | +1.6% | no |
+| **Business** | **4.45** | **15 of 15** | **910.0 / 836.0** (+74 [+42, +97]) | **+8.9%** | **yes** |
+
+- **Folds 4–5 check** (shuffle 1's folds 4–5, 1,600 grids, which the screens never read; see "Slot 3
+  registered"): Wellness 236 vs 259 (−8.9%), Tax 340 vs 341 (−0.3%), Transportation 319 vs 316
+  (+0.9%), **Business 358 vs 327 (+9.5%)**. Business's gain holds on grids the screens never saw, so it
+  is not an artefact of how the candidate groups were chosen.
+- **Groups chosen** (rounds of 15): Business: commute 14, count ratios 8, shop access 6. Wellness:
+  one-hot 8, halves 6, shop access 4 (unstable across rounds; it lost to plain one-hot). Transportation:
+  count ratios 12 (little gain). Tax: nothing consistent.
+- **Reading.** Business depends on homes per job and trips to work, and on shops per home: workers and
+  customers relative to businesses. The 75 features held these only as separate counts and distances.
+- **Session 2 ends with this test** (owner's choice), so Business's model is `gbm_groups` from now on,
+  and slot 5 is compared with it. The alternative was to keep Session 2 open until slot 5 finished, and
+  adopt whichever approved more.
+
+*Source:* `python search.py --compare gbm_groups` (1 Nov, against the session-start models);
+`results/compare_gbm_groups_2026-11-01_as_decided.xlsx`. Run from commit 6472f36; every record says
+the repository was unchanged during the run.
+
+### 1 November 2026: Slot 5 registered, `gbm_tuned` (owner's choice), before any of its outer results
+
+- **Recipe:** slot 3's group search (same 15 candidates, up to 3 groups, 0.005 minimum gain), then 40
+  Optuna trials of GBM settings on the chosen groups, each scored by inner hp_recall on the round's
+  4 inner folds; the best settings are refit on the round's 3,200 grids.
+- **Settings searched** (`search.SLOT5_SPACE`): library LightGBM or XGBoost; trees 200–2,000; learning
+  rate 0.01–0.1; tree size 8–128 leaves (LightGBM) or depth 3–10 (XGBoost); share of grids and of
+  features per tree 0.5–1.0. The first trial is always Stage 1's settings. Optuna's TPE sampler with a
+  fixed seed (0), so a rerun repeats the same trials.
+- **Compared with** the models in force now: Wellness `gbm_engineered_onehot`, Business `gbm_groups`,
+  Tax and Transportation `gbm_engineered`. It inherits slot 3's disclosure on how the candidate groups
+  were chosen, so its folds 4–5 check is reported too.
+- **Cost:** one Business round took 375 s (1 November, sharing the processor); 60 rounds on 10 workers
+  is about 45–60 min.
+- **Counts toward the cap** as each advisor's slot 5. Slot 6 (stacker) remains.
