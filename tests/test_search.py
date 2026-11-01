@@ -423,3 +423,12 @@ def test_group_report_counts_choices_and_scores_only_folds_4_5(monkeypatch):
     assert sheets["Folds 4-5 only"][0]["Grids"] == 24  # folds 4 and 5 of 60 grids
     monkeypatch.setitem(search.INCUMBENT, "Tax", "toy")  # adopted: no folds 4-5 check
     assert search.group_report("toy", ["Tax"])["Folds 4-5 only"] == []
+
+
+def test_wellness_slot_5_always_keeps_its_one_hot_cells():
+    wellness = search.recipe("gbm_tuned_onehot", "Wellness")
+    grids = _toy_data()[0]
+    assert wellness.blocks(grids)["base"].shape[1] == 75 + 245
+    assert "onehot" not in wellness.groups
+    assert search.recipe("gbm_tuned", "Business").blocks(grids)["base"].shape[1] == 75
+    assert "Always included: onehot" in search.describe(wellness)

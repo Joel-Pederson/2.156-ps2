@@ -320,17 +320,26 @@ def _model(settings):
 @dataclass(frozen=True)
 class TunedGroupGBM(GroupSearchGBM):
     """Slot 5: slot 3's group search, then `trials` Optuna trials of GBM settings on the
-    chosen groups, each scored by inner hp_recall; the best settings are refit."""
+    chosen groups, each scored by inner hp_recall; the best settings are refit. `start`
+    groups join the 75 features before the search, so an advisor keeps its current inputs
+    (Wellness: one-hot cells)."""
 
     trials: int = 40
+    start: tuple = ()
 
     def spec(self):
         extra = {
             "space": SLOT5_SPACE,
             "first_trial": STAGE1_SETTINGS,
             "trials": self.trials,
+            "start": list(self.start),
         }
         return super().spec() | {"kind": "tuned_group_gbm"} | extra
+
+    def blocks(self, grids):
+        blocks = super().blocks(grids)
+        blocks["base"] = np.hstack([blocks["base"], *(blocks[g] for g in self.start)])
+        return blocks
 
     def library_versions(self):
         import optuna
@@ -390,11 +399,21 @@ REGISTRY = {
         summary="GBM on the 75 features plus up to 3 feature groups, chosen per round",
         groups=SLOT3_GROUPS,
     ),
-    # Slot 5, registered 1 November: slot 3's search, then Optuna (owner's choice).
+    # Slot 5, registered 1 November: slot 3's search, then Optuna (owner's choice). Each
+    # advisor starts from its current inputs: Wellness keeps its one-hot cells; for the
+    # others, the 75 features (Business's current model is slot 3's search itself).
     "gbm_tuned": TunedGroupGBM(
         slot=5,
         summary="slot 3's group search, then 40 Optuna trials of GBM library and settings",
         groups=SLOT3_GROUPS,
+        advisors=("Tax", "Transportation", "Business"),
+    ),
+    "gbm_tuned_onehot": TunedGroupGBM(
+        slot=5,
+        summary="as gbm_tuned, but one-hot cells always join the 75 features",
+        groups=tuple(g for g in SLOT3_GROUPS if g != "onehot"),
+        advisors=("Wellness",),
+        start=("onehot",),
     ),
     # Slot 4, registered 31 October after rule 2.2: position matters for Wellness, Tax and
     # Business, so their CNN may not train on rotated copies; Transportation's may.
@@ -490,6 +509,8 @@ def describe(procedure):
         )
         lines.append("    " + ", ".join(procedure.groups))
         if isinstance(procedure, TunedGroupGBM):
+            if procedure.start:
+                lines.append(f"  Always included: {', '.join(procedure.start)}")
             lines.append(
                 f"  Then {procedure.trials} Optuna trials on the chosen groups:"
             )

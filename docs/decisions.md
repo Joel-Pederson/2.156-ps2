@@ -33,6 +33,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 1 Nov | Slot 3 registered: GBM + up to 3 of 15 feature groups, chosen per round | Slot 3 registered |
 | 1 Nov | Business adopts slot 3 (+8.9%, t 4.45, 15 of 15 folds); Session 2 ends | Slot 3 adoption test |
 | 1 Nov | Slot 5 registered: slot 3's search, then 40 Optuna trials (LightGBM or XGBoost) | Slot 5 registered |
+| 1 Nov | Slot 5 revised before any result: Wellness's version always keeps one-hot cells | Slot 5 revised |
 
 ## The rules in plain words
 
@@ -839,3 +840,17 @@ the repository was unchanged during the run.
 - **Cost:** one Business round took 375 s (1 November, sharing the processor); 60 rounds on 10 workers
   is about 45–60 min.
 - **Counts toward the cap** as each advisor's slot 5. Slot 6 (stacker) remains.
+
+### 1 November 2026: Slot 5 revised before any of its outer results (owner's choice)
+
+- **Why:** in slot 3, Wellness's search switched between one-hot cells (8 rounds of 15) and halves
+  (6), a coarse summary of position, and lost to the one-hot model (−2.7%). Slot 5 as registered
+  would repeat that search, so for Wellness it would likely lose for the same reason, however well it
+  tuned.
+- **Change:** each advisor's slot 5 starts from its current inputs. Wellness gets
+  `gbm_tuned_onehot`: the 245 one-hot cells always join the 75 features, then the same group search
+  (the other 14 groups) and the same 40 Optuna trials. Tax, Transportation and Business keep
+  `gbm_tuned` as registered: the 75 features are Tax's and Transportation's current inputs, and
+  Business's current model is slot 3's search itself.
+- **No result was seen.** The first `gbm_tuned` run was stopped (Ctrl-C) before any advisor's 15
+  rounds finished, so nothing was saved or shown. Still one recipe per advisor in slot 5.
