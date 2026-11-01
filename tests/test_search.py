@@ -365,3 +365,19 @@ def test_migration_copies_old_results_to_new_names(tmp_path, monkeypatch):
     write_old("2" * 16, {**old, "scoring": [[0.9], 0.75]})  # other precision levels
     with pytest.raises(ValueError, match="differ from the current code"):
         migrate_results.migrate()
+
+
+def test_slot_3_adds_the_group_that_carries_the_signal():
+    # The rating is parks per home, which only "park access" holds directly; "mix" and
+    # one-hot cells don't. Forward selection must add "park access" and stop there.
+    rng = np.random.default_rng(3)
+    grids = rng.integers(0, 5, (400, 7, 7)).astype(np.int8)
+    parks, homes = (grids == 3).sum((1, 2)), (grids == 0).sum((1, 2))
+    # As a percentile, like the real ratings, so about a quarter of grids pass.
+    y = scipy.stats.rankdata(parks / np.maximum(homes, 1)) / len(grids)
+    groups = ("mix", "park access", "onehot")
+    slot3 = search.GroupSearchGBM(slot=3, summary="test", groups=groups, max_added=2)
+    choice, record = slot3.search(grids, y, search.inner_splits(len(y), 0, 0))
+    assert choice[0] == "park access" and len(record["steps"]) == len(choice) + 1
+    assert slot3.predict(slot3.fit(choice, grids, y), grids[:5]).shape == (5,)
+    assert "3 candidates" in search.describe(slot3)

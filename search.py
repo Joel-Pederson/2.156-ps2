@@ -42,6 +42,7 @@ import sklearn
 from sklearn.model_selection import KFold
 
 import features
+import features_lab
 import models_nn
 import validity
 from validity import ADVISORS, CV_FOLDS, CV_REPEATS
@@ -183,6 +184,87 @@ class FixedGBM:
         return model.predict(self.model_inputs(grids))
 
 
+def _gbm(X, y):
+    import lightgbm as lgb
+
+    return lgb.LGBMRegressor(**validity.GBM_PARAMS, n_jobs=1).fit(
+        X, y
+    )  # see the header
+
+
+@dataclass(frozen=True)
+class GroupSearchGBM:
+    """Slot 3: Stage 1's GBM on the 75 features plus up to max_added candidate groups,
+    chosen by forward selection on the inner folds: add the group that raises inner
+    hp_recall most, while it raises it by at least min_gain. Same interface as FixedGBM."""
+
+    slot: int
+    summary: str
+    groups: tuple  # candidates: "onehot", or a features_lab.LAB_GROUPS name
+    max_added: int = 3
+    min_gain: float = 0.005  # smaller gains are within inner-fold noise
+    advisors: tuple = ADVISORS
+
+    def spec(self):
+        return {
+            "kind": "group_search_gbm",
+            "versions": [
+                features.FEATURE_VERSION,
+                features.ONEHOT_VERSION,
+                features_lab.LAB_VERSION,
+            ],
+            "groups": list(self.groups),
+            "max_added": self.max_added,
+            "min_gain": self.min_gain,
+            "gbm_params": validity.GBM_PARAMS,
+        }
+
+    def blocks(self, grids):
+        """{"base" or group: its columns} for these grids."""
+        lab = features_lab.lab(grids)
+        out = {g: lab[:, idx] for g, idx in features_lab.LAB_GROUPS.items()}
+        return {
+            "base": features.engineered(grids),
+            "onehot": features.onehot(grids),
+        } | out
+
+    def search(self, grids, y, inner):
+        blocks = self.blocks(grids)
+
+        def score(chosen):
+            X = np.hstack([blocks[g] for g in ("base", *chosen)])
+            pred = inner_predictions(lambda a, b, c: _gbm(a, b).predict(c), X, y, inner)
+            return hp_recall(pred, y)
+
+        chosen, best = [], score([])
+        steps = [{"added": None, "inner_hp_recall": best}]
+        while len(chosen) < self.max_added:
+            tried = {g: score([*chosen, g]) for g in self.groups if g not in chosen}
+            group = max(tried, key=tried.get)  # a tie goes to the earlier group
+            if tried[group] < best + self.min_gain:
+                break
+            chosen.append(group)
+            best = tried[group]
+            steps.append({"added": group, "inner_hp_recall": best, "tried": tried})
+        return chosen, {"inner_hp_recall": best, "steps": steps}
+
+    def fit(self, choice, grids, y):
+        blocks = self.blocks(grids)
+        return choice, _gbm(np.hstack([blocks[g] for g in ("base", *choice)]), y)
+
+    def predict(self, model, grids):
+        choice, gbm = model
+        blocks = self.blocks(grids)
+        return gbm.predict(np.hstack([blocks[g] for g in ("base", *choice)]))
+
+
+# Slot 3's candidates, in tie-break order: the owner's ideas by place first, then the
+# groups the 1 Nov screen suggested (docs/decisions.md), then one-hot cells.
+SLOT3_GROUPS = (
+    *features_lab.LAB_GROUPS,
+    "onehot",
+)
+
 REGISTRY = {
     "gbm_engineered": FixedGBM(
         ("engineered",),
@@ -194,6 +276,12 @@ REGISTRY = {
         slot=2,
         summary="rule 2.2's true-orientation arm: GBM on the 75 engineered features and the "
         "245 one-hot inputs, which record each cell's position",
+    ),
+    # Slot 3, registered 1 November (owner's choice: forward selection, up to 3 groups).
+    "gbm_groups": GroupSearchGBM(
+        slot=3,
+        summary="GBM on the 75 features plus up to 3 feature groups, chosen per round",
+        groups=SLOT3_GROUPS,
     ),
     # Slot 4, registered 31 October after rule 2.2: position matters for Wellness, Tax and
     # Business, so their CNN may not train on rotated copies; Transportation's may.
@@ -280,6 +368,13 @@ def describe(procedure):
     if isinstance(procedure, FixedGBM):
         inputs = " + ".join(procedure.inputs)
         lines.append(f"  GBM, Stage 1's settings, inputs {inputs}: nothing to search")
+    elif isinstance(procedure, GroupSearchGBM):
+        lines.append(
+            f"  Forward selection on the inner folds: add the best group while inner "
+            f"hp_recall rises by {procedure.min_gain}+, at most {procedure.max_added}. "
+            f"{len(procedure.groups)} candidates:"
+        )
+        lines.append("    " + ", ".join(procedure.groups))
     elif isinstance(procedure, models_nn.CNNSearch):
         allowed = procedure.augment_allowed
         n = len(models_nn.settings(allowed))

@@ -1,32 +1,55 @@
 # Decision log
 
-This log records every modelling decision, the comparison or evidence behind it, and its source.
-It serves three purposes:
+Every comparison and modelling decision, its evidence and date; logging every comparison keeps
+options within the caps below, so luck can't pick the winner. It backs the reflection report.
+- **Rules come before results.** Each rule below was fixed before the result it judges (two disclosed
+  exceptions, 28 October). Changing a rule needs a dated entry saying why.
+- **Entries are a record.** From 31 October they are not rewritten; a correction is a new entry.
+- **Development set only.** No entry uses test-set ratings.
 
-1. **Limiting selection bias.** Selection bias is the best of many compared options looking better
-   than it is, because chance favoured it (`stage1_evaluation.md`, "Validation and test sets"). Each
-   comparison made on the development set is a look at that data. Recording every comparison keeps
-   the number of compared options within the caps below (in Stage 1, *variants*: model
-   configurations; from Stage 2, *procedures*), so that chance does not decide which model wins.
-2. **Fixing decision rules in advance.** The thresholds below were set before the results they judge,
-   with two disclosed exceptions (rule 2.2 and the Stage 2 adoption rule; see the 28 October entry on
-   the Stage 2 protocol). Any change to a threshold requires an entry explaining why.
-3. **Supporting the reflection report.** The entries document the reasoning behind each choice.
+Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.md`](plan.md).
 
-**Entry format.** Each entry gives the date, what was compared, the data used (the development set,
-never the test set), the result with its source, and the decision. Entries are in date order.
+## At a glance
 
-**Terms** are as defined in [`stage1_evaluation.md`](stage1_evaluation.md) and the
-[README](../README.md), including:
-- an advisor's *rating*;
-- a grid *passes* an advisor at a rating of 0.75 or higher, and is *valid* if it passes all four;
-- the *development set* ("dev" in code) and the *test set* (the lockbox);
-- *shuffle*, *round* and *fold*, and *out-of-fold* predictions;
-- the *R² noise threshold*;
-- the *approval count at 98% precision*, and the *approval cut-off*;
-- the *score* (the course's diversity score).
+| Date | Decision | Entry |
+|---|---|---|
+| 25 Oct | Test set fixed: 1,000 grids per advisor, all co-rated grids included | Data split and test set fixed |
+| 25 Oct | Four early analyses saw every rating; disclosed, none used as evidence | Disclosure of four analyses |
+| 25 Oct | Primary model: GBM on the 75 engineered features | Primary model |
+| 25 Oct | Stage 1 scorecard matches the planning runs; Wellness is the bottleneck | Stage 1 scorecard |
+| 26 Oct | Compare models by approvals at 98% precision | Rationale for 98% |
+| 26 Oct | Each advisor's rated grids treated as a random sample | Random samples |
+| 26 Oct | Audit of Stage 1; tests catch injected faults | Audit; three injected faults |
+| 28 Oct | Audit fixes; Stage 2 protocol: nested CV, adoption rule, six-recipe cap | Audit fixes; Stage 2 protocol |
+| 31 Oct | Outer results need a commit; six slots; CNN first | Owner's choices |
+| 31 Oct | CNN budget: 10 settings per round, not 16 | Compute budget |
+| 31 Oct | Position matters for Wellness, Tax and Business | Rule 2.2 result |
+| 31 Oct | Stage 2's harness gives exactly Stage 1's predictions, all four advisors | Harness reproduces Stage 1 |
+| 31 Oct | Test set opens once, after slots 5–6 (7–8 Nov) | Test set opens after slots 5–6 |
+| 31 Oct | CNN search finished: 7 h 12 min, over the 5–6 h budget | CNN search ran to completion |
+| 1 Nov | Wellness adopts GBM + one-hot cells (+7.8%); CNN rejected for all four, not pursued | Adoption tests for slots 2 and 4 |
+| 1 Nov | Rule 2.3 dropped: the CNN is too weak to reveal missing features | Rule 2.3 dropped |
+| 1 Nov | Harness simplified: 1,158 → 759 lines, outputs bit-identical | Harness simplified |
+| 1 Nov | Slot 3 registered: GBM + up to 3 of 15 feature groups, chosen per round | Slot 3 registered |
 
-The *primary model* is GBM (gradient boosting machine) on engineered features.
+## The rules in plain words
+
+The exact wording, which governs, is in the table after this one.
+
+| Rule | If… | …then |
+|---|---|---|
+| 1.3 | Comparing models | Use approvals at 98% precision. Adopt a challenger only if corrected t ≥ 1.761 *and* ≥ 3% more approvals |
+| 2.2 | Cell position helps predict an advisor | No rotated training copies for it; no rotated copies in any submission. *Result: yes for Wellness, Tax, Business* |
+| 2.3 | A CNN can predict the current model's errors (R² > 0.05) | A feature is missing: find it before Stage 3 |
+| 2.4 | A short readable formula matches an advisor on held-out folds | Use the formula instead of a model |
+| 2.7 | About to open the test set | First commit the expected precision; open once; investigate if > 3 points worse |
+| 2.8 | Before opening the test set | Measure whether one model's precision drops on grids another model approves |
+| 3.1 | No designs by 6 Nov | Submit a dataset-only selection first |
+| 3.3 | An independently trained model rejects designs more than comparable dataset grids | Raise that advisor's safety margin |
+| 3.5 | The check model rejects designs more than comparable dataset grids | Tighten the margin and the "looks familiar" gate |
+| 3.6 | A 300-design pilot is no more diverse than a dataset-only selection | Require designs with different district mixes |
+| 4.2 | Rotation test not passed, or rule 2.2 found position matters | No rotated copies submitted |
+| 4.4 | First submission of designs not yet scored | Multiply designs' pass chances by max(0, 1 − 2r), where r is the largest per-advisor excess rejection rate (rule 3.3; 0 if negative) |
 
 ---
 
@@ -606,3 +629,166 @@ cite it.
   rotated or mirrored copies of designs in any submission (rule 4.2).
 - Label-free check: the dataset's own grids are slightly position-dependent (largest gap in a
   district's share between mirror-image cells 1.50%).
+
+### 31 October 2026: Correction to the wording of the rule 2.2 entry
+
+- The 1.50% label-free gap is the largest difference in one district's share between cells that any
+  of the 8 rotations and mirrors map onto each other, not only between mirror-image cells (the
+  printed label in `search.py` says "mirror-image").
+- The chi-square p-value printed alongside is not cited: cells in the same grid are not independent,
+  so it is not calibrated. Only the gap is cited.
+
+### 31 October 2026: The harness reproduces Stage 1 (`python search.py --reproduce`)
+
+Run at 13:03 EDT from commit 1cf563f, with 10 workers; it took 4 min 52 s. Output, verbatim:
+
+```
+Stage 1's GBM through the harness, against validity.out_of_fold (recomputed):
+  Wellness        identical  approved at 98%: 534 [550/523/528]
+  Tax             identical  approved at 98%: 828 [842/815/828]
+  Transportation  identical  approved at 98%: 744 [745/750/738]
+  Business        identical  approved at 98%: 836 [847/814/847]
+PASS
+```
+
+Stage 1's GBM, run through Stage 2's harness (`search.py`), gives exactly Stage 1's out-of-fold
+predictions for all four advisors: the protocol's reproduction check (28 October) passes.
+
+### 31 October 2026: The test set opens after slots 5–6 (owner's choice)
+
+- **Decision.** The owner: "I want the tuned GBM and stacker until we are proven that it is beaten
+  by other options". Slots 5 (tuned GBM) and 6 (stacker or ensemble) run 7–8 November, each adopted
+  only if it passes the adoption test. Then the models are final: rule 2.8 is measured, and the test
+  set opens once (rule 2.7).
+- **Meanwhile,** Stage 3 uses the best models as of 1 November; designs are re-rated if a later slot
+  is adopted (cheap).
+- **Declined:** declaring the 1 November models final and opening the test set on 1 November.
+
+### 31 October 2026: The CNN search (slot 4) ran to completion
+
+- **Run.** From commit 088129c, with 10 workers:
+  - `python search.py --run cnn --advisors Wellness Tax Business` started at 14:28:56 EDT; results
+    were saved for Wellness at 16:41, Tax at 19:17 and Business at 20:10;
+  - `python search.py --run cnn_with_rotations --advisors Transportation` then ran from 20:11 to
+    21:40.
+- **Time.** 7 h 12 min in all: over the 5–6 h budget, but under the 8 h point at which the protocol's
+  cheaper options apply. Rounds took 1,635–8,705 s each.
+- **Throttling.** For part of the run's first hour, macOS throttled the worker processes (App Nap),
+  until Terminal was brought to the front. Overnight runs should keep Terminal in front, or disable
+  App Nap for Terminal first.
+- **Integrity.** Every record says the repository was unchanged during the run.
+- **Adoption tests** follow on 1 November (`python search.py --compare`), run by the owner.
+
+*Source:* the run records in `data/cache/nested/cnn*.json` (start time, commit, workers,
+`seconds_until_saved`, per-round seconds) and `data/cnn_run.log`.
+
+### 1 November 2026: Adoption tests for slots 2 and 4 (`python search.py --compare`, run by the owner)
+
+| Recipe | Advisor | Approved at 98%: new / incumbent | Gain | Corrected t | Folds better | Adopt |
+|---|---|---|---|---|---|---|
+| `cnn` | Wellness | 76.3 / 533.7 | −85.7% | −5.46 | 0 of 15 | no |
+| `cnn` | Tax | 598.3 / 828.3 | −27.8% | −1.15 | 2 of 15 | no |
+| `cnn` | Business | 293.7 / 836.0 | −64.9% | −3.71 | 0 of 15 | no |
+| `cnn_with_rotations` | Transportation | 177.0 / 744.3 | −76.2% | −5.01 | 0 of 15 | no |
+| `gbm_engineered_onehot` | Wellness | 575.3 / 533.7 | +7.8% | 2.00 | 13 of 15 | **yes** |
+| `gbm_engineered_onehot` | Tax | 818.3 / 828.3 | −1.2% | −0.53 | 6 of 15 | no |
+| `gbm_engineered_onehot` | Transportation | 734.0 / 744.3 | −1.4% | −0.22 | 7 of 15 | no |
+| `gbm_engineered_onehot` | Business | 840.3 / 836.0 | +0.5% | −0.39 | 8 of 15 | no |
+
+- **Wellness adopts slot 2** (GBM on the 75 features plus 245 one-hot cells): +41.7 approvals, 95%
+  interval +11 to +91. Session 1 ended with these tests, so it takes effect now (Stage 2 protocol,
+  31 October order); Session 2's challengers are compared with it. This fits rule
+  2.2: Wellness depends most on position (t 5.95), and one-hot cells tell the model each cell's
+  position. The other three advisors keep Stage 1's GBM.
+- **The CNN is rejected for all four advisors and is not pursued further.**
+  - *How far behind:* 28–86% fewer approvals than the GBM; better in at most 2 of 15 folds.
+  - *It learned something, but less than the hand-made features give.* Stage 1's GBM on raw cells
+    (`gbm_onehot`, `python validity.py`) approved 76 / 543 / 5 / 82 (Wellness / Tax / Transportation
+    / Business). The CNN approved 76 / 598 / 177 / 294. That is about the same for Wellness and
+    clearly more for Transportation and Business, so it found some spatial patterns that a GBM on
+    raw cells misses. This comparison is descriptive, not a registered test, and Stage 1's GBM ran
+    without a search.
+  - *Likely under-trained (a hypothesis, not tested).* The lower learning rate (0.001), which was
+    the edge of the searched range, was chosen in 56 of 60 rounds. 21–27% of its fits were still
+    improving when they hit the 60-epoch cap. A lower rate, or more epochs, might do better. In
+    the settings chart (`docs/figures/stage2_cnn_settings.png`), learning rate has by far the
+    largest effect: Tax mean inner hp_recall is 0.549 at 0.001 against 0.045 at 0.003.
+  - *Unstable.* The approval counts vary widely between shuffles: Transportation 37 / 205 / 289,
+    Tax 654 / 690 / 451.
+  - *Why it is not pursued further:*
+    1. Even its best advisor needs +230 approvals just to tie.
+    2. Slot 4 is spent. A second CNN would need slot 5 or 6, which the owner chose to keep for the
+       tuned GBM and the stacker.
+    3. One run costs about 7 h, against under a minute for a fixed GBM.
+    4. The evidence points to features: 744 against 5 Transportation approvals for engineered
+       against raw-cell features in Stage 1, and +7.8% for Wellness from adding one-hot cells.
+  - *Worth trying with more time* (for the report): a lower learning rate and a higher epoch cap; a
+    hybrid that feeds the 75 features in beside the cells; pretraining on the 480,000 unrated
+    grids.
+- **Next:** slot 5 (tuned GBM) adds the GBM library (LightGBM or XGBoost) and its settings to the
+  Optuna search, registered before its run.
+
+*Sources:* `python search.py --compare cnn --advisors Wellness Tax Business`,
+`--compare cnn_with_rotations --advisors Transportation`, `--compare gbm_engineered_onehot` (1 Nov);
+`python validity.py` (Stage 1 table); `data/cnn_run.log` (per-shuffle counts); learning-rate
+choices and epochs from the `rounds` and `tried` lists in `data/cache/nested/cnn*.json`.
+
+### 1 November 2026: Rule 2.3 dropped (owner's choice)
+
+- **Rule 2.3** planned to train a CNN on the incumbent GBM's errors. If the CNN could predict those
+  errors, the grids it flagged would point to features we are missing.
+- **Dropped,** because the CNN is far weaker than the GBM (see the adoption tests above), so its
+  failure to predict the errors would say little. The slot 3 feature study does the same job more
+  directly: it compares the importance of each feature per advisor and looks at the GBM's worst
+  out-of-fold mistakes.
+
+### 1 November 2026: Harness simplified (owner's choice, 31 October: "cut machinery")
+
+- **Why:** the owner found the code bloated; about 450 of `search.py`'s 1,158 lines were guards and
+  tooling added by successive reviews.
+- **Dropped:** the hash of each recipe's source code, the fresh-process re-import check, counting the
+  cap from saved files, and `--time`. **Accepted risk:** an edit to a recipe's code that leaves its
+  settings unchanged is no longer caught automatically; the saved commit and `--reproduce` remain.
+- **Kept:** nested cross-validation, the leakage (spy) tests, the sealed test set, outer results only
+  from a clean committed tree (commit saved), never replacing saved results, the adoption test.
+- **Now:** results are `data/cache/nested/{name}-{advisor}.npy` and `.json`; each record holds the
+  recipe's settings, the data and fold settings, and library versions, and loading refuses if the
+  settings or data changed. The cap (6 per advisor, one per slot) is a test of `REGISTRY`.
+- **Equivalence:** `search.py` 1,158 → 759 lines. Recomputed `gbm_engineered`,
+  `gbm_engineered_onehot` and `rule22_reoriented_1` equal the saved results (12 of 12,
+  `np.array_equal`); `--reproduce` PASS; the 1 November compares give the same t, counts and verdicts.
+  `migrate_results.py` copied the 32 saved results to the new names; the old files remain.
+- **Also changed:** the bootstrap redraws each grid once per draw (the 95% intervals move slightly;
+  the adoption test doesn't use them); `--advisors` defaults to the recipe's own advisors.
+
+*Source:* commit 4c7a054; the equivalence checks are logged in the overnight build's VERIFY log.
+
+### 1 November 2026: Slot 3 registered, `gbm_groups` (owner's choice), before any of its outer results
+
+- **Recipe:** Stage 1's GBM on the 75 engineered features, plus up to 3 feature groups chosen in each
+  outer round by forward selection on that round's 4 inner folds: add the group that raises inner
+  hp_recall most, while it raises it by at least 0.005. Chosen by the owner over "the single best
+  group" and "groups fixed by us now".
+- **15 candidate groups** (`features_lab.py`, `search.SLOT3_GROUPS`):
+  - the owner's ideas, by place: park, shop and office *access* (share of homes within 1, 2 or 3
+    steps; worst-served home; places per home; distance from each cluster of homes) and *crowding*
+    (homes within reach of each place cell: busiest, average, share with none); *commute* (homes per
+    job; trip to the nearest job; busiest job cell; idle jobs);
+  - suggested by a screen: count ratios, nuisance (homes near industry), mix, rings, halves
+    (position-aware), home surroundings, park quality;
+  - one-hot cells (slot 2's extra inputs).
+- **How the candidates were chosen (disclosure).** The owner proposed access, crowding and commute
+  features from domain reasoning. Two screens then used **shuffle 1's folds 1–3 only** (2,400 grids
+  per advisor; rule 2.4's split): a GBM with each group added, and each feature's correlation with
+  what the GBM misses. They suggested the extra groups and cutting the owner's four large groups by
+  place (Wellness: shop access +9% approvals; Business: count ratios +23%). Earlier, a spreadsheet of
+  the GBM's worst out-of-fold mistakes, and one table of Wellness pass rate against park coverage,
+  used all 4,000 development grids. **So slot 3's adoption test may flatter it.** Its result will
+  also be reported on shuffle 1's folds 4–5 alone, which the screens never read, and the test set
+  gives the final, unbiased check.
+- **Cost:** one Wellness round took 145 s on one core (1 November); 60 rounds on 10 workers is
+  about 15–25 min.
+- **Counts toward the cap** as each advisor's slot 3.
+
+*Source:* `features_lab.py`, `search.py` (`GroupSearchGBM`); screens: scratch scripts
+`feature_screen.py` and `place_screen.py`, results in `feature_screen.xlsx` (not in the repo).
