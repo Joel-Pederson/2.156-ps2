@@ -762,3 +762,83 @@ def fig_pred_vs_actual(results, name, threshold=0.75):
     axes[0].set_ylabel("Predicted rating")
     fig.tight_layout()
     return fig
+
+
+# --- Stage 2 ---------------------------------------------------------------------------------
+
+# The CNN search's settings (models_nn.SPACE) in panel order, with what their levels count.
+CNN_SETTINGS = {
+    "depth": "convolution layers",
+    "width": "filters per layer",
+    "kernel": "filter patch side (cells)",
+    "position": "row and column channels",
+    "lr": "learning rate",
+    "augment": "rotated and mirrored copies",
+}
+# Stock colours, skipping amber, pink and dark green (ΔE 0.4, 4.5 and 9.5 from a district).
+ADVISOR_STYLE = {
+    "Wellness": (SERIES[0], "o"),
+    "Tax": (SERIES[1], "s"),
+    "Transportation": (SERIES[2], "^"),
+    "Business": (SERIES[6], "D"),
+}
+
+
+def level_label(level):
+    """A level's name in the chart and printout: no/yes for an on-off setting, else the number."""
+    return ("no", "yes")[level] if isinstance(level, bool) else f"{level:g}"
+
+
+def _level_means(trials, setting):
+    """{level: (mean hp_recall, count, half-width of a rough 95% interval)} for one setting."""
+    means = {}
+    for level in sorted({t[setting] for t in trials}):
+        s = np.array([t["hp_recall"] for t in trials if t[setting] == level])
+        means[level] = (s.mean(), len(s), 1.96 * s.std(ddof=1) / np.sqrt(len(s)))
+    return means
+
+
+def cnn_setting_effects(records):
+    """Each CNN setting's main effect per advisor: {advisor: {setting: {level: (mean inner
+    hp_recall, count, half-width)}}}. Pools all 150 tries (15 rounds x 10) of each record
+    (search.load_outer); the interval treats them as independent, so it is rough."""
+    effects = {}
+    for record in records:
+        trials = [t for rnd in record["rounds"] for t in rnd["tried"]]
+        # Leave out settings held fixed (augment, except for Transportation).
+        searched = [s for s in CNN_SETTINGS if len({t[s] for t in trials}) > 1]
+        effects[record["advisor"]] = {s: _level_means(trials, s) for s in searched}
+    return effects
+
+
+def fig_cnn_settings(effects):
+    """Stage 2: one panel per searched setting, one line per advisor (Wellness blue circles, Tax
+    orange squares, Transportation green triangles, Business purple diamonds), each point with
+    its rough 95% interval, on a log y-axis so Tax's high scores don't flatten the others."""
+    settings = [s for s in CNN_SETTINGS if any(s in e for e in effects.values())]
+    fig, axes = plt.subplots(1, len(settings), figsize=(12, 3.4), sharey=True)
+    for ax, setting in zip(axes, settings):
+        levels = sorted({v for e in effects.values() for v in e.get(setting, {})})
+        for i, (advisor, (colour, marker)) in enumerate(ADVISOR_STYLE.items()):
+            mine = effects.get(advisor, {}).get(setting)
+            if not mine:
+                continue
+            mean, _, half = zip(*mine.values())
+            x = [levels.index(v) + 0.15 * (i - 1.5) for v in mine]  # side by side
+            # Caps wider than the marker, so an interval shorter than the marker still shows.
+            style = {"color": colour, "marker": marker, "markersize": 5, "capsize": 4}
+            ax.errorbar(x, mean, yerr=half, label=advisor, **style)
+        ax.set_xticks(range(len(levels)), [level_label(v) for v in levels])
+        ax.set_xlim(-0.5, len(levels) - 0.5)
+        ax.set_title(setting, fontsize=10)
+        ax.set_xlabel(CNN_SETTINGS[setting], fontsize=8.5)
+        ax.grid(axis="y")
+        ax.set_axisbelow(True)
+    axes[0].set_ylabel("Mean inner hp_recall (log scale)")
+    axes[0].set_yscale("log")  # shared by all panels; equal ratios climb equal heights
+    axes[0].yaxis.set_major_locator(plt.LogLocator(subs=(1, 3)))  # ~x3 apart, not x10
+    axes[0].yaxis.set_major_formatter("{x:g}")  # plain 0.03, not 3x10^-2
+    axes[0].minorticks_off()
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=4)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    return fig

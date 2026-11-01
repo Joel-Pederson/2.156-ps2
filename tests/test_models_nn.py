@@ -102,11 +102,10 @@ def test_the_cnn_runs_end_to_end_through_the_harness(grid_zoo, tmp_path, monkeyp
     y = (grid_zoo == 3).mean((1, 2))
     cnn = models_nn.CNNSearch(4, "test", ("Wellness",), augment_allowed=True, trials=1)
     monkeypatch.setitem(search.REGISTRY, "cnn_test", cnn)
-    rows = np.arange(len(grid_zoo))
-    preds = search.outer_predictions(
-        "cnn_test", "Wellness", grid_zoo, y, rows, workers=1
-    )
+    data = {"Wellness": (grid_zoo, y)}
+    preds = search.outer_predictions("cnn_test", data, workers=1)["Wellness"]
     assert preds.shape == (3, len(grid_zoo)) and np.isfinite(preds).all()
-    (saved,) = (tmp_path / "nested").glob("cnn_test-wellness-*.json")
-    rounds = json.loads(saved.read_text())["rounds"]
+    _, record = search.load_outer("cnn_test", "Wellness")  # saved; passes its checks
+    rounds = record["rounds"]
     assert len(rounds) == search.ROUNDS and all("tried" in r for r in rounds)
+    assert "torch" in record["versions"]

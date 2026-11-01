@@ -12,6 +12,8 @@ not collect this file (its name does not start with test_); run it by hand after
 test or the code a test guards.
 """
 
+import contextlib
+import io
 import os
 import pathlib
 import sys
@@ -88,7 +90,7 @@ def leaky_round_data(grids, y, train, val):
 
 
 def unshared_inner_seed(shuffle, fold):
-    """Inner folds drawn afresh on every call, so procedures no longer search on the same ones."""
+    """Inner folds drawn afresh on every call, so recipes no longer search on the same ones."""
     return int(np.random.default_rng().integers(2**31))
 
 
@@ -99,9 +101,14 @@ def uncorrected_t(diffs, n_train, n_val):
 
 
 def run_harness_spy_test():
-    """Runs the harness spy test outside pytest, supplying its temporary folder and monkeypatch."""
-    with tempfile.TemporaryDirectory() as tmp, pytest.MonkeyPatch.context() as mp:
-        test_search.test_no_procedure_sees_the_grids_it_predicts(pathlib.Path(tmp), mp)
+    """Runs the harness spy test outside pytest, supplying its temporary folder and monkeypatch.
+    The harness's run printout is swallowed, so only CAUGHT or MISSED lines show."""
+    with (
+        tempfile.TemporaryDirectory() as tmp,
+        pytest.MonkeyPatch.context() as mp,
+        contextlib.redirect_stdout(io.StringIO()),
+    ):
+        test_search.test_no_recipe_sees_the_grids_it_predicts(pathlib.Path(tmp), mp)
 
 
 def run_out_of_fold_spy_test(augment=False):
@@ -152,24 +159,24 @@ FAULTS = [
         test_features.test_orientations_are_the_eight_rotations_and_mirrors,
     ),
     (
-        "Stage 2's harness hands a procedure its outer-validation grids to learn from",
+        "Stage 2's harness hands a recipe its outer-validation grids to learn from",
         (search, "_round_data", leaky_round_data),
         run_harness_spy_test,
     ),
     (
-        "One procedure instance is reused across outer rounds",
+        "One recipe instance is reused across outer rounds",
         (search, "_fresh", lambda procedure: procedure),
         run_harness_spy_test,
     ),
     (
-        "Each procedure gets freshly drawn inner folds",
+        "Each recipe gets freshly drawn inner folds",
         (search, "inner_seed", unshared_inner_seed),
-        test_search.test_inner_folds_split_each_outer_training_set_the_same_way_for_every_procedure,
+        test_search.test_every_recipe_gets_the_same_inner_folds,
     ),
     (
         "The paired t-test loses its correction for overlapping training sets",
         (search, "corrected_t", uncorrected_t),
-        test_search.test_corrected_t_widens_the_ordinary_t_for_overlapping_training_sets,
+        test_search.test_corrected_t_widens_the_ordinary_t,
     ),
 ]
 
