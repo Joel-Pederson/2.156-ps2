@@ -34,6 +34,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 1 Nov | Business adopts slot 3 (+8.9%, t 4.45, 15 of 15 folds); Session 2 ends | Slot 3 adoption test |
 | 1 Nov | Slot 5 registered: slot 3's search, then 40 Optuna trials (LightGBM or XGBoost) | Slot 5 registered |
 | 1 Nov | Slot 5 revised before any result: Wellness's version always keeps one-hot cells | Slot 5 revised |
+| 1 Nov | Slot 5: nothing adopted; Transportation +4.7% but t 1.73 (< 1.761) | Slot 5 adoption test |
 
 ## The rules in plain words
 
@@ -854,3 +855,29 @@ the repository was unchanged during the run.
   Business's current model is slot 3's search itself.
 - **No result was seen.** The first `gbm_tuned` run was stopped (Ctrl-C) before any advisor's 15
   rounds finished, so nothing was saved or shown. Still one recipe per advisor in slot 5.
+
+### 1 November 2026: Slot 5 adoption test; nothing adopted (Session 3 ends)
+
+Against the models in force at the start of Session 3 (Wellness `gbm_engineered_onehot`, Business
+`gbm_groups`, Tax and Transportation `gbm_engineered`). Approvals at 98% precision, mean of 3 shuffles.
+
+| Advisor | Recipe | Corrected t | Folds better | Approved: slot 5 / current | Gain | Folds 4–5 only | Adopt |
+|---|---|---|---|---|---|---|---|
+| Wellness | `gbm_tuned_onehot` | −0.89 | 5 of 15 | 570.3 / 575.3 | −0.9% | 217 vs 259 (−16.2%) | no |
+| Tax | `gbm_tuned` | −0.54 | 7 of 15 | 820.3 / 828.3 | −1.0% | 342 vs 341 (+0.3%) | no |
+| Transportation | `gbm_tuned` | 1.73 | 11 of 15 | 779.0 / 744.3 (+34.7 [+10, +59]) | +4.7% | 350 vs 316 (+10.8%) | no |
+| Business | `gbm_tuned` | −0.41 | 7 of 15 | 909.3 / 910.0 | −0.1% | 358 vs 358 (0.0%) | no |
+
+- **Tuning adds little.** For Tax, Transportation and Business, slot 5 chose the same groups as slot 3
+  in every round (same search, same inner folds), so the difference is the Optuna tuning alone: about
+  nothing for Tax and Business; +23 approvals for Transportation (779.0 against slot 3's 756.0).
+- **Transportation: a near miss, not adopted.** The gain clears the 3% margin and holds on folds 4–5,
+  but the corrected t (1.73) is below the pass mark (1.761). The rule was fixed before the results, so
+  it is applied as written. Slot 6 (the stacker) is Transportation's remaining chance.
+- **Wellness:** groups and tuning on top of the one-hot cells did not help; the search chose shop access
+  in 7 rounds of 15.
+- **The models in force are unchanged.** Slot 6 is the last slot.
+
+*Source:* `python search.py --compare gbm_tuned` and `--compare gbm_tuned_onehot` (1 Nov);
+`results/compare_gbm_tuned_2026-11-01_1052.xlsx` and `results/compare_gbm_tuned_onehot_2026-11-01_1052.xlsx`.
+Run from commit 26e33d1; every record says the repository was unchanged during the run.
