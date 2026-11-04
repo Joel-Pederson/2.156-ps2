@@ -21,7 +21,9 @@ advance (docs/decisions.md) measure how often that happens:
 Reads   the course data; the incumbents' and CNNs' saved outer results; data/designs/pool_*
 Writes  data/designs/pilot_m<M>.json and .npz, or check_m<M>.json (never overwritten);
         results/pilot_m<M>.xlsx or check_m<M>.xlsx
-Run     python pilot.py --margin 0.03    then    python pilot.py --check 0.03
+Run     python pilot.py   (the sweep: rule 3.3 at each pooled margin, smallest first, until one
+        passes; then rule 3.5 there. Saved results are reused.)
+        python pilot.py --margin M / --check M   (one rule at one margin)
 
 Surprises
 ---------
@@ -239,28 +241,30 @@ def _print(rows):
         )
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    rule = ap.add_mutually_exclusive_group(required=True)
-    rule.add_argument(
-        "--margin", type=float, help="rule 3.3 (and 3.6): pilot at this margin"
-    )
-    rule.add_argument(
-        "--check", type=float, metavar="MARGIN", help="rule 3.5 at this margin"
-    )
-    ap.add_argument("--workers", type=int, default=generate.WORKERS)
-    args = ap.parse_args(argv)
-    margin = args.margin if args.margin is not None else args.check
-    name = f"{'pilot' if args.margin is not None else 'check'}_m{margin:.2f}"
+def pooled_margins():
+    """The margins generate.py made pools at, smallest first."""
+    margins = set()
+    for path in glob.glob(os.path.join(sel.DESIGNS_DIR, "pool_*.json")):
+        with open(path) as f:
+            margins.add(json.load(f)["settings"]["margin"])
+    return sorted(margins)
+
+
+def _run(kind, margin, workers, commit):
+    """The record of rule 3.3 (kind "pilot") or rule 3.5 ("check") at this margin: the saved
+    one if it exists (a result is never redone or overwritten), else computed and saved."""
+    name = f"{kind}_m{margin:.2f}"
     path = os.path.join(generate.DESIGNS_DIR, name)
-    if os.path.exists(path + ".json"):  # never overwrite a result
-        raise SystemExit(f"{path}.json exists")
-    commit, uncommitted = validity._git_state()
-    if uncommitted:  # the saved commit must hold the code that made the result
-        raise SystemExit(f"Commit first. Not committed: {uncommitted[:5]}")
+    key = "rule 3.3" if kind == "pilot" else "rule 3.5"
+    if os.path.exists(path + ".json"):
+        with open(path + ".json") as f:
+            record = json.load(f)
+        print(f"{key} at margin {margin}: saved result (commit {record['commit'][:7]})")
+        _print(record[key])
+        return record
     record = {"commit": commit, "margin": margin}
-    if args.margin is not None:
-        rows, summary, arrays = rule_3_3(margin, args.workers)
+    if kind == "pilot":
+        rows, summary, arrays = rule_3_3(margin, workers)
         print(
             f"Rule 3.3 at margin {margin}: B models judge {summary['designs made']} designs"
         )
@@ -275,7 +279,7 @@ def main(argv=None):
         record |= {"rule 3.3": rows, "summary": summary}
         sheets = {"Rule 3.3": rows, "Rules 3.6 and 4.4": [summary]}
     else:
-        rows = rule_3_5(margin, args.workers)
+        rows = rule_3_5(margin, workers)
         print(
             f"Rule 3.5 at margin {margin}: the CNN judges {rows[0]['designs']} pooled designs"
         )
@@ -285,6 +289,45 @@ def main(argv=None):
     with open(path + ".json", "w") as f:
         json.dump(record, f, indent=1, default=search._json_default)
     print(f"Saved {path}.json; table {tables.save(name, sheets)}")
+    return record
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument(
+        "--margin", type=float, help="only rule 3.3 (and 3.6), at this margin"
+    )
+    ap.add_argument(
+        "--check", type=float, metavar="MARGIN", help="only rule 3.5, at this margin"
+    )
+    ap.add_argument("--workers", type=int, default=generate.WORKERS)
+    args = ap.parse_args(argv)
+    commit, uncommitted = validity._git_state()
+    if uncommitted:  # the saved commit must hold the code that made the result
+        raise SystemExit(f"Commit first. Not committed: {uncommitted[:5]}")
+    if args.margin is not None or args.check is not None:
+        for kind, margin in (("pilot", args.margin), ("check", args.check)):
+            if margin is not None:
+                _run(kind, margin, args.workers, commit)
+        return
+    # The sweep: rule 3.3 at each pooled margin, smallest first, until one passes; then 3.5.
+    for margin in pooled_margins():
+        rows = _run("pilot", margin, args.workers, commit)["rule 3.3"]
+        if not any(row["significant"] for row in rows):
+            break
+    else:
+        fooled = ", ".join(row["advisor"] for row in rows if row["significant"])
+        raise SystemExit(
+            f"Rule 3.3 fails at every pooled margin ({fooled} at {margin}):"
+            " raise those advisors' margins and generate again."
+        )
+    failed = [
+        r["advisor"]
+        for r in _run("check", margin, args.workers, commit)["rule 3.5"]
+        if r["significant"]
+    ]
+    verdict = f"fails for {', '.join(failed)}" if failed else "passes"
+    print(f"\nDecision: margin {margin} passes rule 3.3; rule 3.5 {verdict}.")
 
 
 if __name__ == "__main__":
