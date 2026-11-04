@@ -63,6 +63,13 @@ def test_dev_data_hides_every_lockbox_label_and_nothing_else(needs_data):
     assert np.array_equal(~np.isnan(dev), ~np.isnan(raw) & ~mask)
 
 
+def test_lockbox_membership_comes_only_from_the_raw_ratings(needs_data):
+    # load_dev() has hidden the lockbox, so a mask drawn from it would be development grids.
+    with pytest.raises(ValueError, match="raw ratings"):
+        validity.lockbox_mask(validity.load_dev()[1])
+    assert validity.lockbox_fingerprint(validity.lockbox_members()) == EXPECTED_LOCKBOX
+
+
 def _canonical(grids):
     """One key per grid that's identical for all 8 of its orientations."""
     turned = features.orientations(grids).reshape(8, len(grids), 49)

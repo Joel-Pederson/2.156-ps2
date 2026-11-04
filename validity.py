@@ -123,6 +123,10 @@ def lockbox_mask(ratings):
     """
     labelled = ~np.isnan(ratings)
     co_rated = labelled.sum(1) >= 2
+    if (
+        not co_rated.any()
+    ):  # load_dev() hid them all: the fill would be development grids
+        raise ValueError("lockbox_mask needs the raw ratings: use lockbox_members()")
     rng = np.random.default_rng(LOCKBOX_SEED)
     mask = np.zeros(ratings.shape, bool)
     for a in range(ratings.shape[1]):
@@ -141,6 +145,11 @@ def lockbox_fingerprint(mask):
     for a in range(mask.shape[1]):
         h.update(np.flatnonzero(mask[:, a]).astype(np.int64).tobytes())
     return h.hexdigest()
+
+
+def lockbox_members():
+    """Which labels are in the lockbox (rule 2.7 needs this before opening), never their values."""
+    return lockbox_mask(_load_raw()[1])
 
 
 def load_dev():

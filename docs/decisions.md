@@ -35,6 +35,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 1 Nov | Slot 5 registered: slot 3's search, then 40 Optuna trials (LightGBM or XGBoost) | Slot 5 registered |
 | 1 Nov | Slot 5 revised before any result: Wellness's version always keeps one-hot cells | Slot 5 revised |
 | 1 Nov | Slot 5: nothing adopted; Transportation +4.7% but t 1.73 (< 1.761) | Slot 5 adoption test |
+| 4 Nov | Slot 6 skipped: the models are final. CNN refit fix; pilot built (rules 3.3, 3.5, 3.6) | Slot 6 skipped; pilot |
 
 ## The rules in plain words
 
@@ -881,3 +882,30 @@ Against the models in force at the start of Session 3 (Wellness `gbm_engineered_
 *Source:* `python search.py --compare gbm_tuned` and `--compare gbm_tuned_onehot` (1 Nov);
 `results/compare_gbm_tuned_2026-11-01_1052.xlsx` and `results/compare_gbm_tuned_onehot_2026-11-01_1052.xlsx`.
 Run from commit 26e33d1; every record says the repository was unchanged during the run.
+
+### 4 November 2026: Slot 6 skipped; the models are final; the pilot is built
+
+- **Decision.** The owner skipped slot 6 (the stacker) to focus on the final pick. The models in
+  force are final: Wellness `gbm_engineered_onehot`, Business `gbm_groups`, Tax and Transportation
+  `gbm_engineered`. Rule 2.8 and the one test-set opening (rule 2.7) follow.
+- **Generator run (1–2 Nov):** 60 batches at margins 0.03, 0.06 and 0.10 hold 19,947, 19,890 and
+  19,906 distinct designs (pool_1, the trial, is in the 0.03 count). Batches drew their starts
+  separately, so a few designs repeat across batches; `select_submission.py --designs` keeps each
+  once.
+- **Fixes from the 1 Nov code sweep:**
+  - The CNN's final refit had no check that its output varies. In 10 of the 60 saved outer rounds
+    it predicts one constant for every grid (Wellness 3, Tax 2, Transportation 2, Business 3).
+    The CNN stays rejected, but the 1 Nov entry's Tax t (−1.15), its per-shuffle counts and the
+    "under-trained" reading partly reflect these collapsed refits. A refit now retries with the
+    next seed (up to 5) when its predictions are constant. Rule 3.5's check model is this refit.
+    The saved CNN results predate the fix.
+  - `validity.lockbox_mask` now refuses `load_dev()`'s labels, from which it silently drew
+    development grids. `validity.lockbox_members()` gives rule 2.7 the test-set membership.
+- **Pilot (`pilot.py`)** runs rules 3.3, 3.5, 3.6 and rule 4.4's discount as the revised table
+  states them. Choices the rules leave open:
+  - one margin at a time, smallest first (0.03); if rule 3.3 raises a margin, the pilot runs at
+    the next pooled margin (0.06, then 0.10) for all advisors;
+  - half-models search on 4 inner folds seeded by their split seed (31–33);
+  - rule 3.5 judges a random 300 of the pooled designs at that margin; the CNN's final search uses
+    inner-fold seed 35, and its cut-off is the mean over 3 shuffles of the 98%-precision cut-off
+    on its saved outer predictions.

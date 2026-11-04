@@ -49,6 +49,7 @@ PATIENCE = 8  # epochs without a better validation error before an inner fit sto
 BATCH = 128
 HIDDEN = 64  # units in the fully connected layer
 WEIGHT_DECAY = 1e-4
+REFIT_SEEDS = 5  # seeds a final refit may try before giving up on a collapsed network
 
 
 def settings(augment_allowed):
@@ -236,9 +237,16 @@ class CNNSearch:
         return choice, {"tried": tried, "inner_hp_recall": best["hp_recall"]}
 
     def fit(self, choice, grids, y):
+        """The chosen setting trained on all of (grids, y). A network can collapse to one
+        output for every grid (10 of 60 saved outer refits did, 1 Nov), so then the next seed."""
         setting = {key: choice[key] for key in SPACE}
-        net, _ = train_network(setting, grids, y, seed=0, epochs=choice["epochs"])
-        return net, setting
+        for seed in range(REFIT_SEEDS):
+            net, _ = train_network(
+                setting, grids, y, seed=seed, epochs=choice["epochs"]
+            )
+            if np.ptp(predict_network(net, setting, grids)) > 0:
+                return net, setting
+        raise RuntimeError(f"every refit predicts one constant ({REFIT_SEEDS} seeds)")
 
     def predict(self, model, grids):
         net, setting = model

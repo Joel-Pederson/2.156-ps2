@@ -110,7 +110,7 @@ def test_cli_saves_a_valid_submission_and_its_stats(tmp_path, monkeypatch):
     monkeypatch.setattr(surrogates, "load_ratings", lambda: (pred, spread, info))
     monkeypatch.setattr(calibration, "fit_all", lambda: dict.fromkeys(ADVISORS))
     monkeypatch.setattr(sel, "SUBMISSIONS_DIR", str(tmp_path))
-    sel.main()
+    sel.main([])
     [path] = tmp_path.glob("insurance_*.npy")
     saved = np.load(path)
     scoring.check_submission(saved)  # 100 distinct 7×7 int64 grids
@@ -118,3 +118,34 @@ def test_cli_saves_a_valid_submission_and_its_stats(tmp_path, monkeypatch):
     assert (saved == grids[record["rows"]]).all() and min(record["rows"]) >= 50
     assert record["commit"] == "d" * 40 and record["ratings"] == info
     assert {"expected_score", "reference_diversity", "assumes"} <= set(record)
+
+
+def _pool(
+    folder, seed, margin, grids, cuts
+):  # the parts of a generate.py pool that are read
+    n = len(grids)
+    np.savez(
+        folder / f"pool_{seed}.npz",
+        grids=grids,
+        pred=np.full((n, 4), 0.9),
+        spread=np.zeros((n, 4)),
+    )
+    settings = {"seed": seed, "margin": margin, "cutoffs": cuts}
+    (folder / f"pool_{seed}.json").write_text(json.dumps({"settings": settings}))
+
+
+def test_pools_merge_by_margin_in_seed_order_each_design_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(sel, "DESIGNS_DIR", str(tmp_path))
+    cuts = dict.fromkeys(ADVISORS, 0.8)
+    a, b, c = (np.full((7, 7), v, np.int8) for v in range(3))
+    _pool(tmp_path, 2, 0.1, np.stack([b, a]), cuts)  # a again: kept once, from seed 1
+    _pool(tmp_path, 1, 0.1, np.stack([a, c]), cuts)
+    _pool(tmp_path, 3, 0.03, np.stack([b]), cuts)  # another margin: left out
+    grids, pred, spread = sel.load_pools(0.1, cuts)
+    assert [g[0, 0] for g in grids] == [0, 2, 1] and pred.shape == spread.shape == (
+        3,
+        4,
+    )
+    _pool(tmp_path, 4, 0.1, np.stack([c]), dict.fromkeys(ADVISORS, 0.7))  # other models
+    with pytest.raises(SystemExit, match="other cut-offs"):
+        sel.load_pools(0.1, cuts)
