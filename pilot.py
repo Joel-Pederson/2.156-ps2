@@ -21,8 +21,9 @@ advance (docs/decisions.md) measure how often that happens:
 Reads   the course data; the incumbents' and CNNs' saved outer results; data/designs/pool_*
 Writes  data/designs/pilot_m<M>.json and .npz, or check_m<M>.json (never overwritten);
         results/pilot_m<M>.xlsx or check_m<M>.xlsx
-Run     python pilot.py   (the sweep: rule 3.3 at each pooled margin, smallest first, until one
-        passes; then rule 3.5 there. Saved results are reused.)
+Run     python pilot.py   (the sweep: rule 3.3 at each margin in SWEEP, smallest first, until
+        one passes; the final pool there, if none exists (generate.py, POOL_SEEDS); then rule
+        3.5 there. Saved results are reused, unless other models made them.)
         python pilot.py --margin M / --check M   (one rule at one margin)
 
 Surprises
@@ -60,6 +61,7 @@ BIN = 0.01  # margin bins that designs and dataset grids are matched in
 ALPHA = 0.05
 CHECK_MODEL = {a: "cnn" for a in ADVISORS} | {"Transportation": "cnn_with_rotations"}
 CHECK_SEED = 35  # the CNN's inner folds for its final search: a seed used nowhere else
+POOL_SEEDS = range(4001, 4009)  # the final pool: 8 generator runs of 1,000 tries
 # Rule 3.3's sweep, smallest first: one margin for all four advisors; then (4 Nov) a higher
 # margin for Wellness alone, the advisor still fooled at 0.10 (order: Wellness, Tax,
 # Transportation, Business).
@@ -270,10 +272,12 @@ def _run(kind, margin, workers, commit):
     if os.path.exists(path + ".json"):
         with open(path + ".json") as f:
             record = json.load(f)
+        if record.get("incumbents") != search.INCUMBENT:
+            raise SystemExit(f"{path}.json was made with other models: move it aside")
         print(f"{key} at margin {margin}: saved result (commit {record['commit'][:7]})")
         _print(record[key])
         return record
-    record = {"commit": commit, "margin": margin}
+    record = {"commit": commit, "margin": margin, "incumbents": search.INCUMBENT}
     if kind == "pilot":
         rows, summary, arrays = rule_3_3(margin, workers)
         print(
@@ -333,13 +337,10 @@ def main(argv=None):
         raise SystemExit(
             f"Rule 3.3 fails at every margin in SWEEP ({fooled} at {margin})."
         )
-    if margin not in pooled_margins():
-        arg = ",".join(map(str, np.atleast_1d(margin)))
-        raise SystemExit(
-            f"\nRule 3.3 passes at margin {margin}. Next, design the final pool there:\n"
-            f"  python generate.py --n 1000 --margin {arg} --seed S   (several seeds)\n"
-            "then run python pilot.py again: it reuses the saved results and runs rule 3.5."
-        )
+    if margin not in pooled_margins():  # the final pool: one generate.py run per seed
+        print(f"\nRule 3.3 passes at margin {margin}: designing the final pool there")
+        for seed in POOL_SEEDS:
+            generate.print_summary(generate.run(1000, margin, args.workers, seed))
     failed = [
         r["advisor"]
         for r in _run("check", margin, args.workers, commit)["rule 3.5"]

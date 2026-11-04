@@ -38,6 +38,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 4 Nov | Slot 6 skipped: the models are final. CNN refit fix; pilot built (rules 3.3, 3.5, 3.6) | Slot 6 skipped; pilot |
 | 4 Nov | Rule 3.3: Wellness needs margin 0.15 (others 0.10) | Rule 3.3 results |
 | 4 Nov | Slot 6 reinstated before the test set opens: the mean of each advisor's GBM recipes | Slot 6 registered |
+| 4 Nov | Slot 6 adopted for Transportation only; the pilot reruns with it | Slot 6 result |
 
 ## The rules in plain words
 
@@ -956,3 +957,26 @@ bee5588, 427fb17).
 
 *Source:* `python pilot.py` (data/designs/pilot_mWellness0.15-Tax0.10-Transportation0.10-Business0.10;
 commit 7ed88ec).
+
+### 4 November 2026: Slot 6 result: Transportation adopts the combined model
+
+| Advisor | Against | t | Approved at 98% precision | Adopt |
+|---|---|---|---|---|
+| Wellness | gbm_engineered_onehot | 0.03 | 578.3 vs 575.3, +0.5% | no |
+| Tax | gbm_engineered | 1.21 | 830.7 vs 828.3, +0.3% | no |
+| Transportation | gbm_engineered | 2.46 | 770.0 vs 744.3, +3.4% [+7, +45 grids] | **yes** |
+| Business | gbm_groups | -0.84 | 891.7 vs 910.0, -2.0% | no |
+
+- The combined model's saved predictions equal the mean of its members' saved predictions
+  exactly (largest difference 0.0, every advisor).
+- **Consequences:** Transportation's ratings and cut-off change, so `surrogates.py` reruns, and
+  the 4 Nov pilot results and the 1 Nov pools no longer apply (moved to
+  data/designs/before_4nov/; `pilot.py` now refuses a saved result made with other models).
+  The rule 3.3 sweep reruns from the smallest margin with the new models; `python pilot.py`
+  then generates the final pool itself (seeds 4001-4008, 1,000 tries each) at the first
+  passing margin and runs rule 3.5 on it.
+- The models are now final, so the test set opens next (after `surrogates.py`), before the
+  overnight pool: a bad grade is then found before the compute is spent.
+
+*Source:* `python search.py --compare gbm_ensemble`, `--compare gbm_ensemble_onehot` (commit
+3b17e5e; results/compare_gbm_ensemble*_2026-11-04_1749.xlsx).

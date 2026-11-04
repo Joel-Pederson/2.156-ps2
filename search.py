@@ -484,9 +484,10 @@ REGISTRY = {
 
 # Each advisor's recipe in force; changes only with an adoption in docs/decisions.md.
 INCUMBENT = dict.fromkeys(ADVISORS, "gbm_engineered")
-# Adoptions (docs/decisions.md): 1 Nov, at the end of Sessions 1 and 2.
+# Adoptions (docs/decisions.md): 1 Nov, at the end of Sessions 1 and 2; 4 Nov, slot 6.
 INCUMBENT["Wellness"] = "gbm_engineered_onehot"
 INCUMBENT["Business"] = "gbm_groups"
+INCUMBENT["Transportation"] = "gbm_ensemble"
 
 
 def procedures_for(advisor):
