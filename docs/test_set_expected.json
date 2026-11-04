@@ -1,0 +1,114 @@
+{
+ "expected": [
+  {
+   "advisor": "Wellness",
+   "cut-off": 0.8106093144117077,
+   "approvals": 574.3333333333334,
+   "expected precision": 0.9796868422981787
+  },
+  {
+   "advisor": "Tax",
+   "cut-off": 0.77176621282848,
+   "approvals": 827.6666666666666,
+   "expected precision": 0.9798657808241319
+  },
+  {
+   "advisor": "Transportation",
+   "cut-off": 0.7687576356845094,
+   "approvals": 769.0,
+   "expected precision": 0.9792017004041441
+  },
+  {
+   "advisor": "Business",
+   "cut-off": 0.7598621517791858,
+   "approvals": 911.6666666666666,
+   "expected precision": 0.9776920154065728
+  }
+ ],
+ "rule 2.8": [
+  {
+   "advisor": "Wellness",
+   "also approved by": "Tax",
+   "approvals": 8.0,
+   "precision": 1.0,
+   "drop": -0.020313157701821294
+  },
+  {
+   "advisor": "Wellness",
+   "also approved by": "Transportation",
+   "approvals": 153.66666666666666,
+   "precision": 0.9869817856743771,
+   "drop": -0.007294943376198404
+  },
+  {
+   "advisor": "Wellness",
+   "also approved by": "Business",
+   "approvals": 58.333333333333336,
+   "precision": 0.971624404425422,
+   "drop": 0.008062437872756734
+  },
+  {
+   "advisor": "Tax",
+   "also approved by": "Wellness",
+   "approvals": 10.333333333333334,
+   "precision": 1.0,
+   "drop": -0.020134219175868107
+  },
+  {
+   "advisor": "Tax",
+   "also approved by": "Transportation",
+   "approvals": 99.66666666666667,
+   "precision": 0.9831952983213488,
+   "drop": -0.003329517497216883
+  },
+  {
+   "advisor": "Tax",
+   "also approved by": "Business",
+   "approvals": 179.0,
+   "precision": 0.9702134337727558,
+   "drop": 0.009652347051376076
+  },
+  {
+   "advisor": "Transportation",
+   "also approved by": "Wellness",
+   "approvals": 143.66666666666666,
+   "precision": 1.0,
+   "drop": -0.020798299595855885
+  },
+  {
+   "advisor": "Transportation",
+   "also approved by": "Tax",
+   "approvals": 113.0,
+   "precision": 0.9792715564723017,
+   "drop": -6.985606815756995e-05
+  },
+  {
+   "advisor": "Transportation",
+   "also approved by": "Business",
+   "approvals": 158.66666666666666,
+   "precision": 0.9726892376605255,
+   "drop": 0.006512462743618608
+  },
+  {
+   "advisor": "Business",
+   "also approved by": "Wellness",
+   "approvals": 39.333333333333336,
+   "precision": 0.9833229101521784,
+   "drop": -0.00563089474560563
+  },
+  {
+   "advisor": "Business",
+   "also approved by": "Tax",
+   "approvals": 186.33333333333334,
+   "precision": 0.980285810862338,
+   "drop": -0.002593795455765213
+  },
+  {
+   "advisor": "Business",
+   "also approved by": "Transportation",
+   "approvals": 127.0,
+   "precision": 0.9763356403366247,
+   "drop": 0.0013563750699481236
+  }
+ ]
+}
