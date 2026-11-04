@@ -36,6 +36,8 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 1 Nov | Slot 5 revised before any result: Wellness's version always keeps one-hot cells | Slot 5 revised |
 | 1 Nov | Slot 5: nothing adopted; Transportation +4.7% but t 1.73 (< 1.761) | Slot 5 adoption test |
 | 4 Nov | Slot 6 skipped: the models are final. CNN refit fix; pilot built (rules 3.3, 3.5, 3.6) | Slot 6 skipped; pilot |
+| 4 Nov | Rule 3.3: Wellness needs margin 0.15 (others 0.10) | Rule 3.3 results |
+| 4 Nov | Slot 6 reinstated before the test set opens: the mean of each advisor's GBM recipes | Slot 6 registered |
 
 ## The rules in plain words
 
@@ -933,3 +935,24 @@ reference of 0.311.
 
 *Source:* `python pilot.py` (data/designs/pilot_m0.03, pilot_m0.06, pilot_m0.10; commits 2ba5a23,
 bee5588, 427fb17).
+
+### 4 November 2026: Rule 3.3 passes at Wellness 0.15; slot 6 reinstated and registered
+
+- **Rule 3.3 result:** with Wellness at 0.15 and the others at 0.10, no advisor's B models reject
+  the designs significantly more than matched dataset grids: Wellness 1.8% vs 0.0% (p 0.29), Tax
+  0.7% vs 0.0% (p 0.63), Transportation 8.2% vs 13.9%, Business 0.4% vs 6.6%. 282 of the 300
+  pilot designs reached the higher bars. Rule 3.6: 0.656 vs 0.311. Rule 4.4: r 0.018, discount
+  0.965. This holds for the current models.
+- **Decision (owner, before any slot 6 result):** slot 6 runs after all; the 4 Nov skip is
+  reversed. The test set is still unopened, so the decision can't be informed by it.
+- **Slot 6 registered:** `gbm_ensemble` (Tax, Transportation, Business) and
+  `gbm_ensemble_onehot` (Wellness) are the plain mean of the advisor's GBM recipes: slots 1, 2, 3
+  and 5. Each member searches and fits exactly as it does alone, with the same inner folds and
+  so the same choices; there are no learned weights. The CNN stays out, because it is the
+  independent check model (rule 3.5), so it can't be part of the primary model. The adoption
+  test is the usual one, against the models in force.
+- **If an advisor adopts it,** that advisor's surrogates, ratings and cut-offs change, so the
+  pilot (rules 3.3 and 3.6) is rerun with the new models before the final pool is generated.
+
+*Source:* `python pilot.py` (data/designs/pilot_mWellness0.15-Tax0.10-Transportation0.10-Business0.10;
+commit 7ed88ec).

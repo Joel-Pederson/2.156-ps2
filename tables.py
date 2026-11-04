@@ -21,6 +21,8 @@ def _cell(value):
     """NumPy numbers become plain ones (openpyxl can't write them); floats keep 4 decimals."""
     if hasattr(value, "item"):
         value = value.item()
+    if isinstance(value, list | tuple):  # e.g. a margin per advisor
+        value = ", ".join(map(str, value))
     return round(value, 4) if isinstance(value, float) else value
 
 

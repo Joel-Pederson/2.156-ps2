@@ -381,6 +381,43 @@ class TunedGroupGBM(GroupSearchGBM):
         return gbm.predict(self._inputs(grids, choice["groups"]))
 
 
+@dataclass(frozen=True)
+class Ensemble:
+    """Slot 6: the mean of several recipes' predictions, each searched and fitted exactly as
+    it is alone (same inner folds, so the same choices). Same interface as FixedGBM."""
+
+    members: tuple  # REGISTRY names
+    slot: int
+    summary: str
+    advisors: tuple = ADVISORS
+
+    def spec(self):
+        return {
+            "kind": "ensemble",
+            "members": {m: REGISTRY[m].spec() for m in self.members},
+        }
+
+    def library_versions(self):
+        found = (getattr(REGISTRY[m], "library_versions", dict)() for m in self.members)
+        return {key: value for versions in found for key, value in versions.items()}
+
+    def search(self, grids, y, inner):
+        choices, records = {}, {}
+        for m in self.members:
+            choices[m], records[m] = REGISTRY[m].search(grids, y, inner)
+        # The mean's own inner score would refit every member on every inner fold, and it
+        # decides nothing, so only the members' records are kept.
+        return choices, {"inner_hp_recall": float("nan"), "members": records}
+
+    def fit(self, choice, grids, y):
+        return {m: REGISTRY[m].fit(choice[m], grids, y) for m in self.members}
+
+    def predict(self, model, grids):
+        return np.mean(
+            [REGISTRY[m].predict(model[m], grids) for m in self.members], axis=0
+        )
+
+
 REGISTRY = {
     "gbm_engineered": FixedGBM(
         ("engineered",),
@@ -414,6 +451,20 @@ REGISTRY = {
         groups=tuple(g for g in SLOT3_GROUPS if g != "onehot"),
         advisors=("Wellness",),
         start=("onehot",),
+    ),
+    # Slot 6, registered 4 November (owner's choice): the mean of the advisor's GBM recipes.
+    # The CNN stays out: it is the independent check model, so it can't be in the primary one.
+    "gbm_ensemble": Ensemble(
+        ("gbm_engineered", "gbm_engineered_onehot", "gbm_groups", "gbm_tuned"),
+        slot=6,
+        summary="the mean of slots 1, 2, 3 and 5's predictions",
+        advisors=("Tax", "Transportation", "Business"),
+    ),
+    "gbm_ensemble_onehot": Ensemble(
+        ("gbm_engineered", "gbm_engineered_onehot", "gbm_groups", "gbm_tuned_onehot"),
+        slot=6,
+        summary="as gbm_ensemble, with Wellness's slot 5 (gbm_tuned_onehot)",
+        advisors=("Wellness",),
     ),
     # Slot 4, registered 31 October after rule 2.2: position matters for Wellness, Tax and
     # Business, so their CNN may not train on rotated copies; Transportation's may.
@@ -515,6 +566,8 @@ def describe(procedure):
                 f"  Then {procedure.trials} Optuna trials on the chosen groups:"
             )
             lines += [f"    {key:<14} {values}" for key, values in SLOT5_SPACE.items()]
+    elif isinstance(procedure, Ensemble):
+        lines.append(f"  The mean of: {', '.join(procedure.members)}")
     elif isinstance(procedure, models_nn.CNNSearch):
         allowed = procedure.augment_allowed
         n = len(models_nn.settings(allowed))
