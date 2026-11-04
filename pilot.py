@@ -60,6 +60,17 @@ BIN = 0.01  # margin bins that designs and dataset grids are matched in
 ALPHA = 0.05
 CHECK_MODEL = {a: "cnn" for a in ADVISORS} | {"Transportation": "cnn_with_rotations"}
 CHECK_SEED = 35  # the CNN's inner folds for its final search: a seed used nowhere else
+# Rule 3.3's sweep, smallest first: one margin for all four advisors; then (4 Nov) a higher
+# margin for Wellness alone, the advisor still fooled at 0.10 (order: Wellness, Tax,
+# Transportation, Business).
+SWEEP = [
+    0.03,
+    0.06,
+    0.1,
+    [0.15, 0.1, 0.1, 0.1],
+    [0.2, 0.1, 0.1, 0.1],
+    [0.25, 0.1, 0.1, 0.1],
+]
 
 
 def _dev(advisor):
@@ -242,18 +253,18 @@ def _print(rows):
 
 
 def pooled_margins():
-    """The margins generate.py made pools at, smallest first."""
-    margins = set()
+    """The margins generate.py has made pools at."""
+    margins = []
     for path in glob.glob(os.path.join(sel.DESIGNS_DIR, "pool_*.json")):
         with open(path) as f:
-            margins.add(json.load(f)["settings"]["margin"])
-    return sorted(margins)
+            margins.append(json.load(f)["settings"]["margin"])
+    return margins
 
 
 def _run(kind, margin, workers, commit):
     """The record of rule 3.3 (kind "pilot") or rule 3.5 ("check") at this margin: the saved
     one if it exists (a result is never redone or overwritten), else computed and saved."""
-    name = f"{kind}_m{margin:.2f}"
+    name = f"{kind}_{generate.margin_label(margin)}"
     path = os.path.join(generate.DESIGNS_DIR, name)
     key = "rule 3.3" if kind == "pilot" else "rule 3.5"
     if os.path.exists(path + ".json"):
@@ -294,12 +305,14 @@ def _run(kind, margin, workers, commit):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    margin = {
+        "type": generate.parse_margin,
+        "metavar": "MARGIN",
+    }  # 0.1, or 0.2,0.1,0.1,0.1
     ap.add_argument(
-        "--margin", type=float, help="only rule 3.3 (and 3.6), at this margin"
+        "--margin", **margin, help="only rule 3.3 (and 3.6), at this margin"
     )
-    ap.add_argument(
-        "--check", type=float, metavar="MARGIN", help="only rule 3.5, at this margin"
-    )
+    ap.add_argument("--check", **margin, help="only rule 3.5, at this margin")
     ap.add_argument("--workers", type=int, default=generate.WORKERS)
     args = ap.parse_args(argv)
     commit, uncommitted = validity._git_state()
@@ -310,16 +323,22 @@ def main(argv=None):
             if margin is not None:
                 _run(kind, margin, args.workers, commit)
         return
-    # The sweep: rule 3.3 at each pooled margin, smallest first, until one passes; then 3.5.
-    for margin in pooled_margins():
+    # The sweep: rule 3.3 at each margin in SWEEP until one passes; then rule 3.5 there.
+    for margin in SWEEP:
         rows = _run("pilot", margin, args.workers, commit)["rule 3.3"]
         if not any(row["significant"] for row in rows):
             break
     else:
         fooled = ", ".join(row["advisor"] for row in rows if row["significant"])
         raise SystemExit(
-            f"Rule 3.3 fails at every pooled margin ({fooled} at {margin}):"
-            " raise those advisors' margins and generate again."
+            f"Rule 3.3 fails at every margin in SWEEP ({fooled} at {margin})."
+        )
+    if margin not in pooled_margins():
+        arg = ",".join(map(str, np.atleast_1d(margin)))
+        raise SystemExit(
+            f"\nRule 3.3 passes at margin {margin}. Next, design the final pool there:\n"
+            f"  python generate.py --n 1000 --margin {arg} --seed S   (several seeds)\n"
+            "then run python pilot.py again: it reuses the saved results and runs rule 3.5."
         )
     failed = [
         r["advisor"]

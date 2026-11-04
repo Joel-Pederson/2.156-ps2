@@ -36,6 +36,7 @@ from datetime import datetime
 import numpy as np
 
 import calibration
+import generate
 import scoring
 import surrogates
 import tables
@@ -196,7 +197,7 @@ def designs(margins, cuts, cals, info):
             f"  expected score, if the chances hold  {stats['expected_score']:.3f} (hopeful)"
         )
         stem = _save(
-            f"designs_m{margin:.2f}",
+            f"designs_{generate.margin_label(margin)}",
             grids[idx].astype(np.int64),
             stats | {"ratings": info},
         )
@@ -210,7 +211,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument(
         "--designs",
-        type=float,
+        type=generate.parse_margin,
         nargs="+",
         metavar="MARGIN",
         help="pick from generate.py's pools at each margin, not from dataset grids",

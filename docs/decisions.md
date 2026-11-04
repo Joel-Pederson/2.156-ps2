@@ -909,3 +909,27 @@ Run from commit 26e33d1; every record says the repository was unchanged during t
   - rule 3.5 judges a random 300 of the pooled designs at that margin; the CNN's final search uses
     inner-fold seed 35, and its cut-off is the mean over 3 shuffles of the 98%-precision cut-off
     on its saved outer predictions.
+
+### 4 November 2026: Rule 3.3 at margins 0.03, 0.06 and 0.10; Wellness's margin goes higher
+
+The B models' rejection rate for 300 pilot designs, against matched dataset grids, by margin:
+
+| Advisor | 0.03 | 0.06 | 0.10 |
+|---|---|---|---|
+| Wellness | 44% vs 35% (p 0.53) | **33% vs 18% (p 0.001)** | **9.7% vs 0.1% (p 0.007)** |
+| Tax | **27% vs 7% (p < 0.001)** | **12% vs 2% (p < 0.001)** | 0.7% vs 0.0% (p 0.67) |
+| Transportation | 13% vs 31% | 6% vs 22% | 3% vs 13% |
+| Business | 7% vs 35% | 3% vs 17% | 0% vs 6% |
+
+Rule 3.6 passes at every margin: 100 pilot designs score 0.696, 0.694 and 0.678, against the
+reference of 0.311.
+
+- **Decision (before any further result):** rule 3.3 raises only the failing advisor's margin.
+  The sweep goes on with Wellness at 0.15, 0.20, then 0.25, the other three advisors staying at
+  0.10, and stops at the first setting that passes. The final pool is then generated at that
+  setting, and rule 3.5 runs on it.
+- `generate.py`, `pilot.py` and `select_submission.py --designs` accept a margin per advisor,
+  written as Wellness,Tax,Transportation,Business (for example 0.2,0.1,0.1,0.1).
+
+*Source:* `python pilot.py` (data/designs/pilot_m0.03, pilot_m0.06, pilot_m0.10; commits 2ba5a23,
+bee5588, 427fb17).

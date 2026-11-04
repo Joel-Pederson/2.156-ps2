@@ -191,9 +191,27 @@ def _save(pool, path):
         json.dump({k: pool[k] for k in ("settings", "summary")}, f, indent=2)
 
 
+def parse_margin(text):
+    """'0.1' -> 0.1, one margin for all four advisors; '0.2,0.1,0.1,0.1' -> one per advisor."""
+    values = [float(v) for v in text.split(",")]
+    if len(values) not in (1, len(validity.ADVISORS)):
+        raise argparse.ArgumentTypeError("give one margin, or one per advisor")
+    return values[0] if len(values) == 1 else values
+
+
+def margin_label(margin):
+    """For file names: m0.10, or mWellness0.20-Tax0.10-Transportation0.10-Business0.10."""
+    if np.ndim(margin) == 0:
+        return f"m{margin:.2f}"
+    return "m" + "-".join(f"{a}{m:.2f}" for a, m in zip(validity.ADVISORS, margin))
+
+
 def print_summary(pool):
     cfg, s = pool["settings"], pool["summary"]
-    bars = ", ".join(f"{a} {c + cfg['margin']:.3f}" for a, c in cfg["cutoffs"].items())
+    margins = np.broadcast_to(cfg["margin"], len(cfg["cutoffs"]))
+    bars = ", ".join(
+        f"{a} {c + m:.3f}" for (a, c), m in zip(cfg["cutoffs"].items(), margins)
+    )
     print(f"""
 Bars (cut-off + margin {cfg["margin"]}): {bars}
 {s["tried"]} designs tried (seed {cfg["seed"]}), at most {cfg["max_steps"]} moves each:
@@ -209,7 +227,13 @@ Predicted to pass, not yet trusted: rules 3.3 and 3.5 must clear these designs f
 def main():
     ap = argparse.ArgumentParser(description="Stage 3's generator v1 (docs/plan.md).")
     ap.add_argument("--n", type=int, default=20, help="designs to try (default 20)")
-    ap.add_argument("--margin", type=float, default=MARGIN, help=f"default {MARGIN}")
+    ap.add_argument(
+        "--margin",
+        type=parse_margin,
+        default=MARGIN,
+        help=f"default {MARGIN}; "
+        "or one per advisor, e.g. 0.2,0.1,0.1,0.1 (Wellness, Tax, Transportation, Business)",
+    )
     ap.add_argument("--workers", type=int, default=WORKERS, help=f"default {WORKERS}")
     ap.add_argument("--seed", type=int, default=0, help="default 0; one pool per seed")
     args = ap.parse_args()
