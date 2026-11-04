@@ -39,6 +39,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 4 Nov | Rule 3.3: Wellness needs margin 0.15 (others 0.10) | Rule 3.3 results |
 | 4 Nov | Slot 6 reinstated before the test set opens: the mean of each advisor's GBM recipes | Slot 6 registered |
 | 4 Nov | Slot 6 adopted for Transportation only; the pilot reruns with it | Slot 6 result |
+| 4 Nov | Test set opened once: every advisor at or above its expected precision | Test set result |
 
 ## The rules in plain words
 
@@ -980,3 +981,22 @@ commit 7ed88ec).
 
 *Source:* `python search.py --compare gbm_ensemble`, `--compare gbm_ensemble_onehot` (commit
 3b17e5e; results/compare_gbm_ensemble*_2026-11-04_1749.xlsx).
+
+### 4 November 2026: Test set result: the final models pass
+
+Opened once (docs/lockbox_log.md), after the expected precision was committed. Precision of
+each surrogate model at its cut-off on the 1,000 hidden grids per advisor:
+
+| Advisor | Truly passing | Approved | Precision | Expected | Investigate |
+|---|---|---|---|---|---|
+| Wellness | 241 | 149 | 0.987 | 0.980 | no |
+| Tax | 242 | 194 | 0.995 | 0.980 | no |
+| Transportation | 256 | 211 | 0.995 | 0.979 | no |
+| Business | 253 | 232 | 0.983 | 0.978 | no |
+
+- Every advisor is at or above its expected precision, so nothing is investigated.
+- Of 286 hidden grids rated by two or more advisors, 10 are approved by every rater's model,
+  and all 10 pass every rater (too few to measure, but no counter-example).
+- The test set is now spent: no model changes after this.
+
+*Source:* `python test_set.py --open` (docs/test_set_result.json; opened at commit 879b292).

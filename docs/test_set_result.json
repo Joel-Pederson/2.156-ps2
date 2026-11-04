@@ -1,0 +1,45 @@
+{
+ "advisors": [
+  {
+   "advisor": "Wellness",
+   "test grids": 1000,
+   "truly passing": 241,
+   "approved": 149,
+   "precision": 0.9865771812080537,
+   "expected precision": 0.9796868422981787,
+   "investigate": false
+  },
+  {
+   "advisor": "Tax",
+   "test grids": 1000,
+   "truly passing": 242,
+   "approved": 194,
+   "precision": 0.9948453608247423,
+   "expected precision": 0.9798657808241319,
+   "investigate": false
+  },
+  {
+   "advisor": "Transportation",
+   "test grids": 1000,
+   "truly passing": 256,
+   "approved": 211,
+   "precision": 0.995260663507109,
+   "expected precision": 0.9792017004041441,
+   "investigate": false
+  },
+  {
+   "advisor": "Business",
+   "test grids": 1000,
+   "truly passing": 253,
+   "approved": 232,
+   "precision": 0.9827586206896551,
+   "expected precision": 0.9776920154065728,
+   "investigate": false
+  }
+ ],
+ "joint": {
+  "co-rated test grids": 286,
+  "approved by every rater's model": 10,
+  "of those, pass every rater": 1.0
+ }
+}

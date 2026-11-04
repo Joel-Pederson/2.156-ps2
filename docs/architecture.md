@@ -47,7 +47,7 @@ model**: it reads the raw map instead of our features, so it can catch designs t
 |---|---|---|
 | Compare model recipes | `python search.py --run NAME`, `--compare NAME` | done |
 | Rate every grid | `python surrogates.py` | redo: Transportation's model changed (4 Nov) |
-| Final exam on hidden grids | `python test_set.py --expect`, commit, `--open` | next |
+| Final exam on hidden grids | `python test_set.py --expect`, commit, `--open` | done (4 Nov): passed |
 | Margin sweep, final pool, CNN check | `python pilot.py` (runs generate.py itself) | overnight |
 | Pick the submission | `python select_submission.py --designs M` | last |
 
