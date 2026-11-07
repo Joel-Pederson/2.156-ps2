@@ -1,96 +1,84 @@
 # How the code fits together
 
-**Goal:** submit 100 city grids that all four advisors rate ≥ 0.75, as varied as possible.
-We can't ask the advisors, so we train models to predict them, design grids the models like,
-check that the models aren't being fooled, then pick the 100 most varied.
+**Goal:** 100 grids that all four advisors rate ≥ 0.75, as different from one another as possible.
+We can't query the advisors, so we:
+1. train a model per advisor;
+2. design grids those models approve, with a safety cushion;
+3. spread the designs apart;
+4. check on the real scoreboard.
 
-## The pipeline
+![The pipeline](figures/pipeline.png)
 
-```
-course data: 500,000 grids; 5,000 rated per advisor     validity.py loads it and hides
-        │                                                1,000 per advisor (the test set)
-        ▼
-features.py        a grid → 75 numbers the models read   (features_lab.py: 148 extra, optional)
-        │
-        ▼
-search.py          per advisor, find the best model recipe, scored honestly   ── DONE
-        │          result: GBMs (decision-tree models); Transportation averages 4
-        ▼
-surrogates.py      refit those 4 models; rate all 500,000 grids               ── REDO (4 Nov)
-        │
-        ├──► calibration.py   predicted rating → chance of passing
-        ▼
-generate.py        edit grids until all 4 models predict "pass" + a margin    ── pilot.py runs it
-        │
-        ▼
-pilot.py           second opinions: do models that didn't make a design      ── REDO (4 Nov)
-        │          still pass it? sets the safety margin
-        ▼
-select_submission.py   pick the 100 most varied designs → submissions/*.npy  ── NEXT
-```
+*Source: `python make_figures.py --stage 4`.*
 
-## Models in force (final as of 4 Nov)
+## The steps
+
+| Step | Script | What it does | Output |
+|---|---|---|---|
+| Data | `validity.py` | Loads 500,000 grids and the ratings; locks 1,000 rated grids per advisor away as the final exam | — |
+| Features | `features.py` | A grid → 75 numbers: district counts, neighbour pairs, distances (`features_lab.py`: 148 more) | — |
+| Models | `search.py` | Up to 6 recipes per advisor, each scored by nested cross-validation (never on grids it trained on); a challenger replaces the incumbent only if clearly better | `data/cache/nested/` |
+| Ratings | `surrogates.py` | Refits each advisor's model; rates all 500,000 grids; sets each *cut-off* where 98% of approved grids truly pass | `data/cache/ratings/` |
+| Designs | `generate.py` | From a random dataset grid, changes one cell at a time until all four models approve with a cushion | `data/designs/pool_*` |
+| Pick | `select_submission.py` | 100 designs from the pool, each as far as possible from those already picked | `submissions/designs_*` |
+| Spread | `anneal.py` | Simulated annealing: moves the 100 apart one cell at a time; every design stays approved | `submissions/anneal_*` |
+
+**Models in force** (final since the test set opened, 4 Nov):
 
 | Advisor | Model | Inputs |
 |---|---|---|
-| Wellness | GBM | 75 features + every cell's district |
+| Wellness | GBM (gradient-boosted trees) | 75 features + every cell's district |
 | Tax | GBM | 75 features |
-| Transportation | mean of 4 GBMs (the other rows' recipes + a tuned one) | as each member |
+| Transportation | mean of 4 GBMs | each member's inputs |
 | Business | GBM | 75 features + up to 3 extra feature groups |
 
-The CNN (`models_nn.py`) lost to the GBM for every advisor. It survives only as the **check
-model**: it reads the raw map instead of our features, so it can catch designs that game a feature.
+A CNN that reads the raw grid lost to the GBMs for every advisor. It is kept only as a second
+opinion: the CNN check below.
 
-## Commands, in order
+## The checks, and what they showed
 
-| Step | Command | Status |
-|---|---|---|
-| Compare model recipes | `python search.py --run NAME`, `--compare NAME` | done |
-| Rate every grid | `python surrogates.py` | redo: Transportation's model changed (4 Nov) |
-| Final exam on hidden grids | `python test_set.py --expect`, commit, `--open` | done (4 Nov): passed |
-| Margin sweep, final pool, CNN check | `python pilot.py` (runs generate.py itself) | overnight |
-| Pick the submission | `python select_submission.py --designs M` | last |
+| Check | Script | Question | Result |
+|---|---|---|---|
+| Final exam | `test_set.py` | Precision of each model on the 1,000 locked grids per advisor | 0.983–0.995, all at or above expected (4 Nov) |
+| Fooling check | `pilot.py --margin` | A model trained on half the data designs; one trained on the other half grades. Are designs failed more than ordinary grids? | Passed at cushion 0.15 for Wellness, 0.10 for the others |
+| CNN check | `pilot.py --check` | Same, with the CNN as grader | Flagged all four advisors, but the scoreboard showed it was a false alarm (below) |
+| Scoreboard | by hand, ≤ 5 a day | The real score; divided by the score if all passed, it gives the share that truly passed | [`scoreboard.csv`](scoreboard.csv) |
+
+## What we learned on the scoreboard (7 Nov)
+
+![Scoreboard tries](figures/stage4_scoreboard.png)
+
+- **Our models are trustworthy with a cushion.**
+  - Pool designs at cushion 0.03: about 98% passed.
+  - Annealed designs at cushion 0.06: 100% passed.
+  - Designs pushed to the bare cut-off: about 91% passed.
+- **The search method was the real limit, not the models.**
+  - Picking from a pool gives 0.68–0.72.
+  - Greedy one-cell spreading stops at about 0.755, even with no approval rule.
+  - Annealing reaches 0.774 with no rule.
+  - The hard ceiling for any 100 grids is 0.808.
+- **Both pilot checks were too cautious.**
+  - The CNN check flagged even the cushion-0.15 designs.
+  - The fooling check flagged Tax at cushion 0.03.
+  - Yet pool designs at 0.03 passed at about 98%.
 
 ## Where things are saved
 
-| Folder | Holds |
-|---|---|
-| `data/cache/nested/` | each recipe's honest test predictions (search.py) |
-| `data/cache/ratings/` | all 500,000 grids' predicted ratings (surrogates.py) |
-| `data/designs/` | design pools `pool_<seed>`; pilot results `pilot_m*`, `check_m*` |
-| `submissions/` | submission files (`.npy`) with their stats (`.json`) |
-| `results/` | Excel tables of every comparison and check (not in git) |
-| `docs/decisions.md` | every decision, dated, and the checks we fixed before seeing results |
-
-**Other files:**
-- `scoring.py` computes the course's diversity score.
-- `tables.py` writes the Excel files.
-- `plots.py` and `make_figures.py` draw the figures in `docs/`.
-- `migrate_results.py` was a one-off rename and can be deleted.
-- `tests/` holds the automated checks.
-
-## The checks, in plain words (rule numbers from `docs/decisions.md`)
-
-| Rule | Check | If it fails |
+| Path | Holds | In git |
 |---|---|---|
-| 3.3 | Two copies of each model, trained on different halves of the data: one designs, the other grades. Does the grader fail designs more often than ordinary grids rated just as high? | Raise the margin |
-| 3.5 | The same, with the CNN as grader | Raise the margin |
-| 3.6 | Are 100 designs more varied than 100 existing grids? | Force more varied designs |
-| 4.4 | — | Discount predicted pass chances by twice the extra failure rate from 3.3 |
-| 2.8, 2.7 | Look once at the hidden test grids: an honest grade of each model | Investigate if > 3 points worse than expected |
-
-## Does it work? What is known and what isn't
-
-- **Known:** each model's accuracy on grids it never trained on (nested cross-validation), and
-  that the test grids never leaked into training (automated tests).
-- **Not yet known:** whether designs pass the **real** advisors. The pilot estimates it, and the
-  test set grades the models; only a scoreboard submission measures it directly.
+| `data/cache/` | model predictions and ratings (recomputed on demand) | no |
+| `data/designs/` | design pools and pilot results | no |
+| `submissions/` | every submitted `.npy`, with a `.json` of settings where a script made it | yes |
+| `results/` | Excel tables of every comparison and check | no |
+| `docs/decisions.md` | every decision, dated, and the checks fixed before their results | yes |
 
 ## Words
 
-- **Margin:** how far above its pass line a design's predicted rating must be (0.03, 0.06 or 0.10).
-- **Cut-off:** a model's pass line, set so that 98% of the grids it passes truly pass.
-- **Recipe / slot:** a way of building a model; each advisor could try at most 6 recipes (slots).
-- **Incumbent:** the recipe currently in use for an advisor.
-- **Nested cross-validation:** training and scoring on separate slices, many times, so a score
-  never comes from grids the model saw.
+- **Cut-off:** an advisor model's approval line. Of the grids above it, 98% truly pass.
+- **Cushion (margin):** how far above the cut-off a design must be. We use 0.06 for annealed
+  designs.
+- **Approved:** above the cut-off plus cushion, for all four models.
+- **Nested cross-validation:** each score comes from grids the model never trained on, including
+  for the choice of its settings.
+- **Simulated annealing:** a search that sometimes accepts a worse change early on, so it can leave
+  a local peak; it accepts fewer as it "cools".

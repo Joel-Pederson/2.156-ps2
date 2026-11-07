@@ -1,0 +1,40 @@
+{
+ "margin": [
+  0.15,
+  0.1,
+  0.1,
+  0.1
+ ],
+ "candidates": 7620,
+ "diversity_if_all_valid": 0.6825510204081633,
+ "mean_p_all_four": 0.9964705258899326,
+ "expected_valid": 99.64705258899326,
+ "expected_score": 0.6801824489795918,
+ "ratings": {
+  "commit": "888b8049071fc03cc279c5f88b65eaff8f82485a",
+  "uncommitted_changes": false,
+  "incumbents": {
+   "Wellness": "gbm_engineered_onehot",
+   "Tax": "gbm_engineered",
+   "Transportation": "gbm_ensemble",
+   "Business": "gbm_groups"
+  },
+  "cutoffs": {
+   "Wellness": 0.8106093144117077,
+   "Tax": 0.77176621282848,
+   "Transportation": 0.7687576356845094,
+   "Business": 0.7598621517791858
+  },
+  "approved": {
+   "Wellness": 70275,
+   "Tax": 104950,
+   "Transportation": 93948,
+   "Business": 116273,
+   "all four": 527
+  },
+  "seconds": 201.5
+ },
+ "assumes": "the four advisors' errors are independent",
+ "commit": "19986972e0ff1805d04e9fa9cd92500909445a75",
+ "uncommitted": []
+}

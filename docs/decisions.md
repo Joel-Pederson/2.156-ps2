@@ -41,6 +41,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 4 Nov | Slot 6 adopted for Transportation only; the pilot reruns with it | Slot 6 result |
 | 4 Nov | Test set opened once: every advisor at or above its expected precision | Test set result |
 | 6 Nov | Sweep rerun: Wellness 0.15 still passes; final pool made; CNN training fixed (warm-up) | Sweep rerun; CNN fix |
+| 7 Nov | Scoreboard sets the cushion (0.06, all 100 passed); annealing replaces greedy spreading | Scoreboard tries; annealing |
 
 ## The rules in plain words
 
@@ -1026,3 +1027,49 @@ each surrogate model at its cut-off on the 1,000 hidden grids per advisor:
 
 *Source:* `python pilot.py` (data/designs/pilot_*, pool_4001-4008; commit 3260a6d); replays in
 the session scratchpad (not kept).
+
+### 7 November 2026: Scoreboard tries; the CNN check overruled; annealing
+
+- **CNN check (rule 3.5), fixed CNN, pool at Wellness 0.15 / others 0.10:** the CNN rejected
+  designs more often than matched dataset grids for all four advisors.
+
+  | Advisor | Designs rejected | Matched dataset grids rejected |
+  |---|---|---|
+  | Wellness | 80% | 43% |
+  | Tax | 10% | 0% |
+  | Transportation | 85% | 72% |
+  | Business | 61% | 9% |
+
+  By rule, every margin would rise. The scoreboard overruled it (next point). The CNN also rejects
+  43% of ordinary Wellness grids that our GBM approves at 98% precision, so it is the weaker judge.
+- **Scoreboard tries** (`docs/scoreboard.csv`). The share that truly passed is the real score
+  divided by the score if all passed; it is exact when they are equal.
+
+  | Try | Grids | Cushion | If all passed | Real score | Passed |
+  |---|---|---|---|---|---|
+  | B | 1 Nov pool, greedy max-min pick | 0.03 | 0.719 | 0.705 | ~98% |
+  | C | B, greedy one-cell spreading | 0.00 | 0.746 | 0.680 | ~91% |
+  | D | B, annealing (hard rule) | 0.03 | 0.742 | 0.706 | ~95% |
+  | E | A, annealing (hard rule) | 0.06 | 0.734 | **0.734** | 100% |
+
+  A, the pick from the 4 Nov pool (Wellness 0.15), was uploaded as its .json by mistake and not
+  scored.
+- **What limits the score: the search method, not the models.**
+  - Greedy one-cell spreading stops at about 0.755 even with no approval rule, and at 0.748 with
+    it.
+  - Bigger moves (2-3 cells), rebuilding the most crowded designs from far-away starts, or
+    dropping any one advisor's bar add at most 0.006.
+  - Simulated annealing with no rule reaches 0.774 (3 M proposals); with the hard rule at 0.03 it
+    reaches 0.742, because most proposals leave a design unapproved.
+  - No 100 grids can score above 0.808: for each cell, at most 80% × 100/99 of pairs differ.
+  - The leaderboard's best is 0.772 (7 Nov).
+- **Decisions:**
+  - Annealed designs use cushion 0.06; that is the scoreboard's evidence.
+  - `anneal.py` makes the final step reproducible: the hard rule (as for E), or a soft rule
+    (designs may dip below a bar early, at a rising penalty, and are repaired at the end). Soft
+    runs at 0.05 and 0.06 are in progress.
+  - Branches `joel_stage1` and `joel_stage2` were merged into `joel_dev` (a fast-forward) and
+    deleted; `main` is untouched.
+
+*Source:* `python pilot.py` (check_mWellness0.15-…json, commit 1998697); the course scoreboard,
+7 Nov; scratch prototypes of each search, folded into `anneal.py`.

@@ -17,6 +17,10 @@ Stage 1 figures (numbered as in docs/stage1_evaluation.md and analysis.ipynb):
 * ``fig_scorecard(results)``    Figure 5: approval count at 98% precision, per model and advisor.
 * ``fig_pred_vs_actual(...)``   Figures 6-7: predicted vs true rating, per advisor.
 
+Stage 4 figures (docs/architecture.md):
+* ``fig_pipeline()``              the pipeline, with the checks beside the steps they test.
+* ``fig_scoreboard(rows, best)``  each scoreboard try: real score vs score if all passed.
+
 Every figure carries labels only. Titles and descriptions are captions placed below the figure
 (stage documents in docs/, analysis.ipynb), following standard practice for documents.
 
@@ -841,4 +845,118 @@ def fig_cnn_settings(effects):
     axes[0].minorticks_off()
     fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=4)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
+    return fig
+
+
+# --- Stage 4 -------------------------------------------------------------------------------
+
+PIPELINE = (  # (script, what it does), top to bottom
+    (
+        "Course data",
+        "500,000 grids; 5,000 rated per advisor, 1,000 of them locked away",
+    ),
+    ("features.py", "each grid → 75 numbers: district counts, neighbours, distances"),
+    ("search.py", "each advisor's model, chosen by honest nested cross-validation"),
+    (
+        "surrogates.py",
+        "rate every grid; cut-off where 98% of approved grids truly pass",
+    ),
+    ("generate.py", "edit grids cell by cell until all 4 models approve them"),
+    ("select_submission.py", "pick 100 varied designs from the pool"),
+    ("anneal.py", "spread the 100 apart; every one stays approved + cushion"),
+    ("submission .npy", "100 grids"),
+)
+PIPELINE_CHECKS = (  # (row of PIPELINE it checks, name, what it showed)
+    (3, "test_set.py", "final exam on the locked grids:\nprecision 0.98-0.99 (4 Nov)"),
+    (4, "pilot.py", "fooling check and CNN check:\nset the first cushion"),
+    (
+        6,
+        "scoreboard tries",
+        "real pass rate: cushion 0.06\n→ 100 of 100 passed (7 Nov)",
+    ),
+)
+
+
+def fig_pipeline():
+    """The pipeline: one box per step, top to bottom; the checks beside the step they test."""
+    fig, ax = plt.subplots(figsize=(10.5, 7.2))
+    ax.set_xlim(0, 11)
+    ax.set_ylim(-0.6, len(PIPELINE) - 0.4)
+    ax.invert_yaxis()
+    ax.axis("off")
+    for row, (name, what) in enumerate(PIPELINE):
+        box = plt.Rectangle(
+            (0.1, row - 0.32), 6.5, 0.64, fc=SURFACE, ec=SERIES[0], lw=1.2
+        )
+        ax.add_patch(box)
+        ax.text(0.3, row - 0.08, name, weight="bold", va="center")
+        ax.text(0.3, row + 0.15, what, color=INK_2, fontsize=8.5, va="center")
+        if row:
+            ax.annotate(
+                "",
+                (3.3, row - 0.33),
+                (3.3, row - 0.67),
+                arrowprops={"arrowstyle": "-|>", "color": INK_2, "lw": 1},
+            )
+    for row, name, what in PIPELINE_CHECKS:
+        box = plt.Rectangle(
+            (7.2, row - 0.4), 3.7, 0.8, fc=SURFACE, ec=SERIES[1], lw=1.2, ls="--"
+        )
+        ax.add_patch(box)
+        ax.text(7.35, row - 0.22, name, weight="bold", va="center")
+        ax.text(
+            7.35,
+            row + 0.13,
+            what,
+            color=INK_2,
+            fontsize=8,
+            va="center",
+            linespacing=1.3,
+        )
+        ax.plot([6.6, 7.2], [row, row], color=SERIES[1], lw=1, ls="--")
+    handles = [
+        Patch(fc=SURFACE, ec=SERIES[0], label="step (script)"),
+        Patch(fc=SURFACE, ec=SERIES[1], ls="--", label="check"),
+    ]
+    ax.legend(handles=handles, loc="upper right", bbox_to_anchor=(1, 1.02), ncol=2)
+    return fig
+
+
+def fig_scoreboard(rows, best, ceiling=0.808):
+    """Each scoreboard try: the score if every grid passed (open circle) and the real score
+    (filled dot); the gap is the grids that failed. Lines mark the leaderboard's best and the
+    ceiling no submission can pass."""
+    fig, ax = plt.subplots(figsize=(8, 0.55 * len(rows) + 1.4))
+    for y, r in enumerate(rows):
+        ax.plot([r["score"], r["variety"]], [y, y], color=RULE, lw=2, zorder=1)
+        ax.scatter(r["variety"], y, s=60, fc=SURFACE, ec=INK_2, lw=1.2, zorder=2)
+        ax.scatter(r["score"], y, s=60, color=SERIES[0], zorder=3)
+        passed = r["score"] / r["variety"]
+        ax.text(
+            r["score"] - 0.004,
+            y,
+            f"{r['score']:.3f}  (≈{100 * passed:.0f}% passed)",
+            va="center",
+            ha="right",
+            fontsize=8.5,
+        )
+    for x, label, style, side in (
+        (best, f"leaderboard best {best:.3f} ", "--", "right"),
+        (ceiling, f" ceiling {ceiling:.3f}", ":", "left"),
+    ):
+        ax.axvline(x, color=INK_2, lw=1, ls=style, zorder=0)
+        ax.text(x, -0.75, label, ha=side, fontsize=8, color=INK_2)
+    ax.set_yticks(range(len(rows)), [r["label"] for r in rows])
+    ax.set_ylim(len(rows) - 0.5, -1)
+    ax.set_xlim(0.6, 0.85)
+    ax.set_xlabel("Score (mean distance to the 10 nearest passing grids, /100)")
+    ax.tick_params(axis="y", length=0)
+    ax.spines["left"].set_visible(False)
+    handles = [
+        Line2D(
+            [], [], marker="o", ls="", mfc=SURFACE, mec=INK_2, label="if all 100 passed"
+        ),
+        Line2D([], [], marker="o", ls="", color=SERIES[0], label="real score"),
+    ]
+    ax.legend(handles=handles, loc="upper left", fontsize=8.5)
     return fig
