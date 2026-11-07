@@ -29,3 +29,6 @@ wandb/
 *.ckpt
 *.h5
 *.npz
+
+# --- Personal working notes (untracked for now) ---
+fatak_notes.md
