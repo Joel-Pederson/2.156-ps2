@@ -40,6 +40,7 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 4 Nov | Slot 6 reinstated before the test set opens: the mean of each advisor's GBM recipes | Slot 6 registered |
 | 4 Nov | Slot 6 adopted for Transportation only; the pilot reruns with it | Slot 6 result |
 | 4 Nov | Test set opened once: every advisor at or above its expected precision | Test set result |
+| 6 Nov | Sweep rerun: Wellness 0.15 still passes; final pool made; CNN training fixed (warm-up) | Sweep rerun; CNN fix |
 
 ## The rules in plain words
 
@@ -1000,3 +1001,28 @@ each surrogate model at its cut-off on the 1,000 hidden grids per advisor:
 - The test set is now spent: no model changes after this.
 
 *Source:* `python test_set.py --open` (docs/test_set_result.json; opened at commit 879b292).
+
+### 6 November 2026: Sweep rerun with the new models; final pool; CNN check model fixed
+
+- **Rule 3.3 with the new Transportation model:** the same outcome as on 4 Nov. Tax fails at
+  0.03 and 0.06 (p < 0.001, 0.002), Wellness at 0.10 (p 0.003). Wellness 0.15 with the others
+  at 0.10 passes (Wellness p 0.66, Tax p 0.66). Rule 3.6: 0.651 vs 0.311. Rule 4.4: r 0.011,
+  discount 0.979.
+- **Final pool:** seeds 4001-4008 at that margin, 7,620 designs (936-965 of 1,000 per run,
+  about 44 s per design).
+- **Rule 3.5 stopped:** the CNN check model, refitted on all development grids, rated every grid
+  the same with all 5 seeds. Cause, from replays: Adam's first steps are full-size whatever
+  the error; through the last hidden layer's 3,136 inputs (depth 3 or width 64) they overshoot
+  (mean output 0.1, then 3.35 after one step), and the correction switches off all 64 units
+  within 6 steps. 9 of the 10 collapsed outer refits on 1 Nov were depth 3 or width 64.
+- **Fix:** the learning rate warms up linearly over the first epoch (`models_nn.train_network`).
+  Replaying 4 collapsed rounds with 3 seeds each: 8 of 12 collapse without it, 0 of 12 with
+  it; where both train, held-out correlation with the true rating is about the same (0.81-0.97
+  vs 0.82-0.98).
+- **Not rerun:** the saved CNN outer results predate the fix and include the 10 collapsed
+  rounds. They now serve only to set the check model's cut-off; rule 3.5 judges designs and
+  their matched dataset grids with the same model at the same cut-off, so the comparison stays
+  fair. The 1 Nov CNN-vs-GBM numbers understate the CNN for the same reason; the report says so.
+
+*Source:* `python pilot.py` (data/designs/pilot_*, pool_4001-4008; commit 3260a6d); replays in
+the session scratchpad (not kept).

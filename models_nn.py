@@ -119,6 +119,12 @@ def train_network(setting, grids, y, seed, epochs=MAX_EPOCHS, val=None):
     opt = torch.optim.AdamW(
         net.parameters(), lr=setting["lr"], weight_decay=WEIGHT_DECAY
     )
+    # Warm-up (6 Nov): the learning rate rises to full over the first epoch. Adam's first
+    # steps are full-size whatever the error, and could switch off every unit of the last
+    # hidden layer, so the network rated every grid the same (8 of 12 replays of collapsed
+    # refits; none with the warm-up).
+    steps = -(-len(t) // BATCH)
+    warm = torch.optim.lr_scheduler.LambdaLR(opt, lambda k: min(1.0, (k + 1) / steps))
     if val is not None:
         X_val = torch.from_numpy(_inputs(val[0], setting["position"]))
         t_val = torch.as_tensor(np.asarray(val[1]), dtype=torch.float32)
@@ -135,6 +141,7 @@ def train_network(setting, grids, y, seed, epochs=MAX_EPOCHS, val=None):
             opt.zero_grad()
             loss.backward()
             opt.step()
+            warm.step()
         if val is None:
             continue
         error = _mse(net, X_val, t_val)
