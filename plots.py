@@ -24,6 +24,10 @@ Stage 4 figures (README Figures 2-3):
 * ``fig_pipeline()``              the pipeline, with the checks beside the steps they test.
 * ``fig_scoreboard(rows, best)``  each scoreboard try: real score vs score if all passed.
 
+Report figures (make_figures.py --stage 5):
+* ``fig_model_approvals(rows, passing)``  approvals at 98% precision, model by model.
+* ``fig_failure_bands(shares)``           held-out failures by distance above the cut-off.
+
 Every figure carries labels only. Titles and descriptions are captions placed below the figure
 (stage documents in docs/, analysis.ipynb), following standard practice for documents.
 
@@ -961,4 +965,62 @@ def fig_scoreboard(rows, best, ceiling=0.808):
         Line2D([], [], marker="o", ls="", color=SERIES[0], label="real score"),
     ]
     ax.legend(handles=handles, loc="upper left", fontsize=8.5)
+    return fig
+
+
+def fig_model_approvals(rows, passing):
+    """Held-out grids approved at 98% precision: one panel per advisor, one bar per model
+    (rows: {model: {advisor: count}}, in order), and a dashed line at the truly passing grids
+    (passing: {advisor: count}), the most any model could approve."""
+    names, advisors = list(rows), list(passing)
+    fig, axes = plt.subplots(1, len(advisors), figsize=(12, 3.6), sharey=True)
+    for ax, adv in zip(axes, advisors):
+        vals = [rows[n][adv] for n in names]
+        bars = ax.bar(range(len(names)), vals, color=SERIES[: len(names)], width=0.72,
+                      edgecolor=SURFACE, linewidth=2)
+        for b, v, colour in zip(bars, vals, SERIES):  # inside tall bars: clear of the line
+            inside = v > 150
+            ax.text(b.get_x() + b.get_width() / 2, v - 15 if inside else v + 10, f"{v:.0f}",
+                    ha="center", va="top" if inside else "bottom", fontsize=8.5,
+                    color=ink_on(colour) if inside else INK)
+        ax.axhline(passing[adv], color=INK_2, lw=1, ls="--")
+        ax.text(-0.4, passing[adv] + 12, f"truly passing: {passing[adv]}", fontsize=8,
+                color=INK_2)
+        ax.set_title(adv, fontsize=10)
+        ax.set_xticks([])
+        ax.set_ylim(0, 1150)
+        ax.grid(axis="y")
+        ax.set_axisbelow(True)
+    axes[0].set_ylabel("Held-out grids approved\nat 98% precision")
+    handles = [Patch(facecolor=SERIES[i], label=n) for i, n in enumerate(names)]
+    fig.legend(handles=handles, loc="lower center", ncol=len(names),
+               bbox_to_anchor=(0.5, -0.06), fontsize=9)
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    return fig
+
+
+def fig_failure_bands(shares, cushion=0.06):
+    """Share of held-out grids that truly fail, by how far the model put them above its
+    cut-off (shares: {advisor: {(lo, hi): share}}), with the cushion we used marked."""
+    advisors = list(shares)
+    bands = list(next(iter(shares.values())))
+    fig, ax = plt.subplots(figsize=(8, 3.4))
+    width = 0.8 / len(advisors)
+    for k, adv in enumerate(advisors):
+        x = np.arange(len(bands)) + (k - (len(advisors) - 1) / 2) * width
+        vals = [100 * shares[adv][b] for b in bands]
+        ax.bar(x, vals, width, color=SERIES[k], edgecolor=SURFACE, linewidth=2, label=adv)
+        for xi, v in zip(x, vals):
+            ax.text(xi, v + 0.4, f"{v:.0f}" if v >= 10 else f"{v:.1f}", ha="center",
+                    va="bottom", fontsize=7.5)
+    edge = next(i for i, (lo, _) in enumerate(bands) if lo >= cushion) - 0.5
+    ax.axvline(edge, color=INK_2, lw=1, ls="--")
+    ax.text(edge + 0.05, ax.get_ylim()[1] * 0.92, f"our cushion, {cushion}: above this line",
+            fontsize=8.5, color=INK_2)
+    ax.set_xticks(range(len(bands)), [f"{lo:.2f}–{hi:.2f}" for lo, hi in bands])
+    ax.set_xlabel("How far the model put the grid above its approval cut-off")
+    ax.set_ylabel("Held-out grids that truly fail (%)")
+    ax.grid(axis="y")
+    ax.set_axisbelow(True)
+    ax.legend(fontsize=8.5, ncol=len(advisors), loc="upper center", bbox_to_anchor=(0.5, 1.12))
     return fig

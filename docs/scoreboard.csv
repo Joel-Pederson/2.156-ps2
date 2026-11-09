@@ -5,3 +5,4 @@ date,try,method,cushion,file,variety_if_all_pass,score
 2026-11-07,E,pool pick + annealing,0.06,submissions/probe_anneal_m+0.06_20261107_093337.npy,0.7340612245,0.7340612245
 2026-11-08,F,new models + annealing with swaps,0.06,submissions/probe_new2_m+0.06_20261107_223622.npy,0.7566326531,0.7566326531
 2026-11-08,G,old and new models both approve,old 0.04 / new 0.00,submissions/probe_both_o04n00_20261108_030358.npy,0.7543673469,0.7317346939
+2026-11-09,H,new models + push-apart annealing (fast),0.06,submissions/anneal_push_m0.06_20261109_081750.npy,0.7644081633,0.7644081633

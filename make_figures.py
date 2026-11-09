@@ -14,6 +14,7 @@ reads   the course data (via validity.load_dev(); dev labels only, never the loc
                                 (computed first if `python validity.py` has not been run)
         data/cache/nested/      Stage 2's CNN run records, via search.load_outer()
         docs/scoreboard.csv     every scoreboard try (Stage 4)
+        data/cache/upgraded/    the upgraded models' held-out predictions (report figures)
 writes  docs/figures/*.png      (tracked in git, because the documentation shows them)
 
 How to run
@@ -22,6 +23,7 @@ How to run
     python make_figures.py --stage 1     # one stage only (0 = the README's own figures)
     python make_figures.py --stage 2     # the CNN settings chart, and the numbers behind it
     python make_figures.py --stage 4     # the pipeline and the scoreboard tries
+    python make_figures.py --stage 5     # the report's model comparison and failure bands
 
 Surprises
 ---------
@@ -42,8 +44,11 @@ matplotlib.use("Agg")  # files only, no windows
 import matplotlib.pyplot as plt
 import numpy as np
 
+from scipy.stats import norm
+
 import plots
 import search
+import upgraded
 import validity
 
 FIG_DIR = os.path.join(validity.PS2_ROOT, "docs", "figures")
@@ -121,7 +126,54 @@ def stage4():
     _save(plots.fig_scoreboard(rows, LEADERBOARD_BEST), "stage4_scoreboard.png")
 
 
-STAGES = {0: readme, 1: stage1, 2: stage2, 4: stage4}  # 0 = the README's own figures
+BANDS = ((0.0, 0.02), (0.02, 0.04), (0.04, 0.06), (0.06, 0.10))  # above the cut-off
+
+
+def _upgraded_held_out(advisor):
+    """(probit-scale predictions (3 shuffles, n), true ratings) of the upgraded models."""
+    o = np.load(os.path.join(upgraded.DIR, f"oof_{advisor}.npz"))
+    w = upgraded.NETWORK.get(advisor, (0.0, 0))[0]
+    return (1 - w) * o["gb"] + w * o["fc"], o["y"]
+
+
+def report():
+    """The report's model comparison and failure bands (held out, development ratings only)."""
+    grids, dev = validity.load_dev()
+    stage1 = validity.scorecard(["gbm_onehot"], verbose=False)["gbm_onehot"]
+    recipes = {
+        "GBM on raw cells (Stage 1)": None,
+        "CNN (1 Nov)": CNN_RUNS,
+        "GBM on 75 features (Stage 1)": dict.fromkeys(validity.ADVISORS, "gbm_engineered"),
+        "Final models (4 Nov, test set passed)": search.INCUMBENT,
+        "Upgraded models (8 Nov)": "upgraded",
+    }
+    rows = {name: {} for name in recipes}
+    passing, shares = {}, {}
+    for a in validity.ADVISORS:
+        _, y, _ = search._advisor_data(grids, dev, a)
+        passing[a] = int((y >= validity.THRESHOLD).sum())
+        z, y_up = _upgraded_held_out(a)
+        assert np.array_equal(y_up, y), f"{a}: held-out predictions are for other grids"
+        for name, recipe in recipes.items():
+            if recipe is None:
+                rows[name][a] = stage1[a]["score"].approved
+            elif recipe == "upgraded":
+                rows[name][a] = search._mean_approved(norm.cdf(z), y)
+            else:
+                rows[name][a] = search._mean_approved(search.load_outer(recipe[a], a)[0], y)
+        margin = norm.cdf(z) - upgraded.load()["cutoffs"][a]
+        fail = np.broadcast_to(y < validity.THRESHOLD, margin.shape)
+        shares[a] = {(lo, hi): fail[(margin >= lo) & (margin < hi)].mean() for lo, hi in BANDS}
+    for name, counts in rows.items():
+        print(f"  {name}: " + ", ".join(f"{a} {v:.0f}" for a, v in counts.items()))
+    print("  truly passing: " + ", ".join(f"{a} {v}" for a, v in passing.items()))
+    for a, s in shares.items():
+        print(f"  {a} failing by band: " + ", ".join(f"{100 * v:.1f}%" for v in s.values()))
+    _save(plots.fig_model_approvals(rows, passing), "report_models.png")
+    _save(plots.fig_failure_bands(shares), "report_cushion.png")
+
+
+STAGES = {0: readme, 1: stage1, 2: stage2, 4: stage4, 5: report}  # 0 = the README's own figures
 
 
 def main():

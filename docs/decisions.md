@@ -47,6 +47,8 @@ Terms: [`stage1_evaluation.md`](stage1_evaluation.md) and the "Words" list in
 | 8 Nov | Scoreboard confirms the new models (F: 0.7566, all 100 passed); no single advisor is the gap | Scoreboard tries F and G |
 | 8 Nov | Try F's code moved into the repo (`upgraded.py`, `anneal.py --neighbours`); reproduces F exactly | F's code moved into the repo |
 | 8 Nov | 5 networks at weight 0.5 for Wellness and Tax: held-out approvals 718 → 730 and 900 → 916 | Five networks |
+| 9 Nov | Held-out failures by cushion back 0.06; a Tax-only cushion of 0.02 dropped | Held-out failures by cushion |
+| 9 Nov | Push-apart annealing (fast): try H 0.7644, all 100 passed, 3rd | Push-apart annealing; try H |
 
 ## The rules in plain words
 
@@ -1228,3 +1230,76 @@ whatif_anneal.py); data/designs/scratch_7nov/crosscheck.xlsx; the course scorebo
 
 *Source:* `fcn_more_seeds.py` (session scratchpad; data/designs/scratch_7nov/fcn_oof5_*.npz);
 `python upgraded.py --fit`; checks in the session (8 Nov).
+
+### 9 November 2026 (morning): Held-out failures by cushion; the Tax-only idea dropped
+
+- **The overnight runs did not happen.** One run started at 07:00 instead: seed 0 from F,
+  cushion 0.06, the 5-network models (`data/run_9nov_seed0.log`). It repaired F's 17 grids
+  first (0.7566 → 0.7518 if all pass), then anneals; about 4 h.
+- **Held-out failures by distance above the cut-off** (upgraded models, 3 shuffles; share of
+  grids truly rated below 0.75):
+
+  | Above the cut-off | Wellness | Tax | Transportation | Business |
+  |---|---|---|---|---|
+  | 0.00–0.02 | 13% | 24% | 13% | 20% |
+  | 0.02–0.04 | 5.5% | 3.8% | 4.1% | 3.5% |
+  | 0.04–0.06 | 1.8% | 0.4% | 2.6% | 0.4% |
+  | 0.06–0.10 | 0.4% | 0.6% | 0.2% | 0.8% |
+
+  The old models gave the same picture on 26 Oct (audit: more than 0.05 above, at least 99.6%
+  pass), so held-out predictions pointed to a cushion of about 0.05–0.06 from the start. The
+  fooling check asked for 0.10–0.15, and the scoreboard backed 0.06 (E, F).
+- **Dropped: a cushion of 0.02 for Tax only.** Annealed grids sit at their bars, so about 4 in 100
+  grids held there by Tax would fail, each costing about 0.0075; loosening Tax has gained at most
+  +0.004 (8 Nov, with its rule removed entirely). Tax and Business look as safe at 0.04 as at
+  0.06, but a cushion of 0.04 for all four already bought nothing (8 Nov: 0.7564 against 0.7566).
+- **Next (superseded by the next entry):** the run was stopped at 07:54 for the fast annealer.
+- **Standing (9 Nov, best per team):** Shape Grapplers 0.7718, Neural Net November 0.7651,
+  Darth Horatio!!! 0.7618, us 0.7566 (4th), N 0.7552.
+
+*Source:* `fail_by_band.py` (session scratchpad; results/fail_by_band_upgraded.xlsx); the course
+scoreboard, 9 Nov.
+
+### 9 November 2026 (morning, continued): Push-apart annealing; try H passes 100 of 100
+
+- **Where the score is lost: clumping, not the mix of districts.** In F, a typical pair of grids
+  differs in 39.4 of 49 cells (all pairs 0.8046, near the 0.808 bound), but each grid's 10 nearest
+  differ in 37.1 (0.7566).
+- **Ceilings with no approval rule** (from F, distances only):
+  - plain annealing, 100,000 updates: 0.7751;
+  - 1,000,000 updates: 0.7754 at 500,000 (slow cooling barely helps; stopped);
+  - a penalty on close pairs (below): 0.7760 and 0.7766;
+  - 100 grids built from a 5-symbol code: 0.7837. The models approve none of them for all four
+    advisors, and none of 1,000 random grids either.
+- **Dead ends (models only, no labels):**
+  - *Rotated and reflected copies of F's grids:* 29–62 of each 100 approved at cushion 0.06. A
+    copy sits 36.2 cells from its original on average. Swapping copies into F never raised the
+    score in 40,000 tries.
+  - *Per-cell networks for Transportation and Business:* worse at every weight (Transportation
+    867 → 847 at weight 0.2).
+- **The test set stays unused** (owner's choice: "will cause us to overfit").
+- **Fast annealer** (`data/scratch_keep/scripts/fast_anneal.py`, a prototype for `anneal.py`):
+  - Each candidate edit gets key = gain / T + Gumbel noise. The first approved edit in key order
+    is exactly a heat-bath draw among approved edits (stay put if that key comes first).
+  - So the models rate only the top few: 5–22 edits per update instead of 392.
+  - Designs in one batch are planned from the same state.
+- **Push-apart objective:** the 10-nearest sum minus β·Σ exp(−λ(d − 38)) over each design's pairs,
+  so close pairs are pushed apart even where the course score is flat.
+- **Same start (F), models and cushion (0.06), 100,000 updates:**
+
+  | Objective | Score if all pass |
+  |---|---|
+  | course score only (fast annealer) | 0.7563 (F's method: 0.7566) |
+  | push apart, β 2, λ 0.5 | **0.7644** |
+  | push apart, β 4 | 0.7622 at 40,000 (settles early; stopped) |
+  | push apart again from H, T0 2e-5 | 0.7646 at 60,000 (converged; stopped) |
+
+- **Try H** (the β 2 result): real score 0.7644081633, equal to its score if all pass, so all 100
+  passed. The cushion of 0.06 holds with the stronger search. The leaderboard ranks each team's
+  best try; H is 3rd (1st 0.7718, 2nd 0.7651, 4th 0.7618).
+- **Next:** more push-apart variants (hotter start, β 1, λ 0.25). A try only if a candidate beats
+  our best real score by at least 0.002 if all pass (5 tries a day).
+
+*Source:* session scratchpad (orient_mix.py, norule_fast.py, norule_energy.py); fast_anneal.py and
+its runs (data/fast_*.log); the course scoreboard, 9 Nov.
+
