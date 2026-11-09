@@ -993,9 +993,9 @@ def fig_model_approvals(rows, passing):
         ax.set_axisbelow(True)
     axes[0].set_ylabel("Held-out grids approved\nat 98% precision")
     handles = [Patch(facecolor=SERIES[i], label=n) for i, n in enumerate(names)]
-    fig.legend(handles=handles, loc="lower center", ncol=len(names),
-               bbox_to_anchor=(0.5, -0.06), fontsize=9)
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    fig.legend(handles=handles, loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.13),
+               fontsize=9)
+    fig.tight_layout(rect=(0, 0.13, 1, 1))
     return fig
 
 

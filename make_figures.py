@@ -140,12 +140,12 @@ def report():
     """The report's model comparison and failure bands (held out, development ratings only)."""
     grids, dev = validity.load_dev()
     stage1 = validity.scorecard(["gbm_onehot"], verbose=False)["gbm_onehot"]
-    recipes = {
-        "GBM on raw cells (Stage 1)": None,
-        "CNN (1 Nov)": CNN_RUNS,
-        "GBM on 75 features (Stage 1)": dict.fromkeys(validity.ADVISORS, "gbm_engineered"),
-        "Final models (4 Nov, test set passed)": search.INCUMBENT,
-        "Upgraded models (8 Nov)": "upgraded",
+    recipes = {  # labels for readers who don't know the project's stages
+        "GBM, raw cells only": None,
+        "CNN, raw cells only": CNN_RUNS,
+        "GBM, 75 hand-made features": dict.fromkeys(validity.ADVISORS, "gbm_engineered"),
+        "GBM, features + per-advisor extras (checked on the test set)": search.INCUMBENT,
+        "Upgraded: bell-curve target, more features; networks for Wellness, Tax (submitted)": "upgraded",
     }
     rows = {name: {} for name in recipes}
     passing, shares = {}, {}
