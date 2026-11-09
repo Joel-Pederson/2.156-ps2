@@ -1,0 +1,28 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal.py (prototype of anneal.py's fast mode)",
+  "script_sha256": "7ee66b73da2a6d451d663c76750ef5ab1e6e1b22857d9124ef4abb50fc6366af",
+  "start": "submissions/probe_new2_m+0.06_20261107_223622.npy (try F)",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.06,
+  "updates": 100000,
+  "T0": 5e-05,
+  "T1": 1e-06,
+  "seed": 0,
+  "lam": 0.5,
+  "beta": 2.0,
+  "workers": 5,
+  "repaired_at_start": 17
+ },
+ "score_if_all_pass": 0.7644081632653061,
+ "approved_at_cushion": 0.06,
+ "assumes": "the four advisors' errors are independent",
+ "commit": "0747815cd1b04553253cb21298ee3c2b2b45fed8",
+ "uncommitted": [
+  "docs/decisions.md",
+  "make_figures.py",
+  "plots.py",
+  "docs/figures/report_cushion.png",
+  "docs/figures/report_models.png"
+ ]
+}
