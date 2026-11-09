@@ -24,7 +24,8 @@ Office. Reach r means within r steps; r = 1, 2, 3 are all computed and the GBM p
     park quality                    2       parks of 3+ cells; largest park per home
 
 Inputs/outputs: ``lab(grids)`` maps (n, 7, 7) district codes to (n, 148) float32, columns in
-LAB_NAMES order; LAB_GROUPS maps group name to column indices.
+LAB_NAMES order; LAB_GROUPS maps group name to column indices. ``neighbourhood(grids)`` gives
+the upgraded models' 600 neighbourhood counts (7 Nov; upgraded.py), not a slot 3 group.
 
 Surprises
 ---------
@@ -236,3 +237,35 @@ LAB_NAMES = tuple(n for n, _, _ in _SPEC)
 LAB_GROUPS = {
     g: [i for i, (_, gi, _) in enumerate(_SPEC) if gi == g] for _, g, _ in _SPEC
 }
+
+
+def _shifted(m, dr, dc):
+    """m (n, 7, 7) moved dr rows down and dc columns right; cells moved in are 0."""
+    out = np.zeros_like(m)
+    out[:, max(dr, 0) : SIZE + min(dr, 0), max(dc, 0) : SIZE + min(dc, 0)] = m[
+        :, max(-dr, 0) : SIZE + min(-dr, 0), max(-dc, 0) : SIZE + min(-dc, 0)
+    ]
+    return out
+
+
+def neighbourhood(grids):
+    """(n, 7, 7) -> (n, 600): the upgraded models' neighbourhood library (upgraded.py).
+    For each reach d = 1, 2, 3 (in steps, or as a square block) and each ordered pair of
+    districts (a, b): the a-b pairs within reach, and the a-cells with at least 1, 2 or 3
+    b-cells within reach. 2 shapes x 3 reaches x 25 pairs x 4 = 600 counts."""
+    masks = [(np.asarray(grids) == k).astype(np.int16) for k in range(5)]
+    cols = []
+    for square in (False, True):
+        for d in REACH:
+            offsets = [
+                (r, c)
+                for r in range(-d, d + 1)
+                for c in range(-d, d + 1)
+                if (r, c) != (0, 0) and (square or abs(r) + abs(c) <= d)
+            ]
+            for b in range(5):
+                near = sum(_shifted(masks[b], r, c) for r, c in offsets)
+                for a in range(5):
+                    cols.append((masks[a] * near).sum((1, 2)))
+                    cols += [(masks[a] * (near >= k)).sum((1, 2)) for k in (1, 2, 3)]
+    return np.stack(cols, 1).astype(float)

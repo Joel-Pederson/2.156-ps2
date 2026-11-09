@@ -1,36 +1,21 @@
-# Stage 1: Evaluation protocol
+# Stage 1: How models are evaluated
 
-Part of the documentation for 2.156 Challenge Problem 2. The [README](../README.md) gives the
-project objective, setup and how to run the code; [`decisions.md`](decisions.md) records each
-decision and its evidence. Near the end, "How the code fits together" maps the code: the path from
-course data to a submitted file, what each command runs, and where its results go.
+Part of the 2.156 CP2 docs. The [README](../README.md) has the goal and the code flow;
+[`decisions.md`](decisions.md) has every decision with its evidence.
 
-**Terms used throughout.**
-- A *grid* is a 7 × 7 city layout; each cell holds one of five district types.
-- Each of four *advisors* (Wellness, Tax, Transportation, Business) is a scoring function held by
-  the course staff. It gives a grid a *rating* between 0 and 1.
-- A grid *passes* an advisor if rated at least 0.75, and is *valid* if it passes all four.
-- A model *approves* a grid for an advisor when the grid's predicted rating is at or above that
-  advisor's *approval cut-off*. Its *precision* is the fraction of the grids it approves that truly
-  pass. Both are defined in full under "Model scorecard".
-- The *starter notebook* is `starter_notebook.ipynb`, the course's assignment notebook, adapted to
-  run locally.
-- A submission's *score* (the course's diversity score) counts only its valid grids. Each one
-  contributes its mean distance to its 10 nearest other valid grids, divided by 100 (README, "What
-  the score rewards"). The course *scoreboard* reports the score for up to five submissions per day
-  per group (course Canvas page; the scoreboard has not been released yet).
-- The project has four *stages*: 1, this evaluation protocol; 2, models; 3, designing new grids;
-  4, selecting and submitting the final 100 (README, "Status").
+The four advisors can't be asked to rate new grids. So we train a *surrogate model* per advisor on
+its example ratings, and let the models judge designs. This page sets how those models are scored,
+so that no score is flattered by *leakage* (evaluation grids influencing training or model choice).
 
-Because the advisors cannot be queried directly, later stages rely on *surrogate models*. These are
-models trained on the example ratings to predict each advisor's rating for any grid. Stage 1
-defines how those models are evaluated. The aim is to prevent *leakage*, meaning evaluation data
-influencing training or model choices, which would make the measured accuracy look better than it
-is.
+**Terms.**
+- *Grid:* a 7 × 7 layout; each cell is one of five districts.
+- *Rating:* an advisor's score for a grid, 0–1. A grid *passes* an advisor at 0.75 or more, and is
+  *valid* if it passes all four.
+- *Approve:* a model approves a grid when its predicted rating is at or above the advisor's
+  *cut-off*. *Precision* is the share of approved grids that truly pass ("Model scorecard").
+- *Stages:* 1, this protocol; 2, models; 3, designing grids; 4, picking and submitting 100.
 
 ## Data
-
-The dataset contains 500,000 grids. Each cell holds one of five district types:
 
 | Code | District | Letter in figures |
 |---|---|---|
@@ -40,768 +25,269 @@ The dataset contains 500,000 grids. Each cell holds one of five district types:
 | 3 | Park | P |
 | 4 | Office | O |
 
-- **Rated grids.** Each advisor rated 5,000 grids (course README). The course does not say how
-  those grids were chosen.
-- **Overlaps.** If each advisor's 5,000 grids were an independent random sample of the dataset, any
-  two advisors would share about 50 grids. The observed overlaps are 36–64 per pair of advisors.
-- **Is each a random sample?** The overlaps show only that the four advisors' samples were drawn
-  independently of one another, not that each is a random sample of the dataset. Checks made in the
-  26 October audit support that too: rated and unrated grids have matching district compositions,
-  and a classifier given the 75 engineered features cannot tell them apart. These checks are
-  recorded in `docs/decisions.md` (26 October) but are not yet part of `python validity.py --data`.
-  Each advisor's grids are therefore treated as a random sample; "What can and cannot be checked"
-  relies on this assumption.
-- **Grids rated by more than one advisor.** Only 286 grids are rated by two or more advisors (283 by
-  two, 3 by three), and none by all four.
-- **Unrated grids.** The remaining 480,289 grids are unrated. Later stages use them as starting
-  points for generating designs.
+- 500,000 grids. Each advisor rated 5,000. The other 480,289 are unrated; later stages start
+  designs from them.
+- Only 286 grids are rated by two or more advisors (283 by two, 3 by three), none by all four.
+  Pairs of advisors share 36–64 grids, about the 50 that independent random samples would give.
+- Each advisor's 5,000 are treated as a random sample of the 500,000. In the 26 October audit,
+  rated and unrated grids had matching district mixes, and a classifier could not tell them apart
+  (`decisions.md`).
 
-*Source: `python validity.py --data`, which counts which grids are rated without reading any
-rating. `tests/test_protocol.py` checks the counts.*
+*Source: `python validity.py --data` (reads which grids are rated, never a rating);
+`tests/test_protocol.py` checks the counts.*
 
 ## Data split
 
-Each advisor's 5,000 rated grids are split by the same procedure (Figure 1):
-
-- **Test set (the "lockbox"): 1,000 grids.**
-  - These are excluded from all training and *model selection* (choosing among models, features and
-    settings; see "Validation and test sets").
-  - The test set is evaluated once, after the final *pipeline* is fixed and its expected test-set
-    precision has been recorded in `docs/decisions.md` (rule 2.7). A pipeline is the complete chain
-    of features (the model's inputs; see "Features"), the model, and the decision rules (fixed
-    thresholds that turn predictions into actions, such as which grids to approve). Any further
-    opening would be logged and disclosed.
-  - Test results are never used to choose between alternatives.
-  - In this project's own code (`validity.py`, `features.py`, `scoring.py`, `plots.py`,
-    `make_figures.py`, `analysis.ipynb` and `tests/`), the test-set ratings are reached only
-    through `validity.open_lockbox()`. It requires explicit confirmation and a fully committed
-    repository, and records every opening (time, commit, calling script and reason) in
-    `docs/lockbox_log.md`.
-  - The standard loader, `validity.load_dev()`, returns test-set ratings as NaN ("not a number",
-    the marker for a missing value). The only other code that reads the raw data
-    (`python validity.py --data` and the leakage tests) reads which grids are rated, never a
-    rating.
-  - **The starter notebook.** Its saved outputs come from a run on 25 October, before the test set
-    was set aside, which used every rating; that run is listed in the decision log's disclosure.
-    Since 28 October its ratings cell hides the test-set ratings (with `validity.lockbox_mask()`)
-    whenever it runs locally, so re-running it is safe.
-  - All 286 grids rated by two or more advisors are assigned here. They are the only grids with two
-    true ratings, so they are the only way to check whether two models are wrong on the *same* grid.
-    That check is small: 36–64 grids per pair of advisors, none rated by all four. The dependence
-    that matters most for the joint estimate needs only one true rating per grid and can be measured
-    on the development set instead (see "What can and cannot be checked").
-- **Development set ("dev" in the code, as in `load_dev()`): 4,000 grids.** These are used for
-  training, validation and every model comparison, through *k*-fold cross-validation with
-  *k* = 5:
-  1. The 4,000 grids are divided at random into five *folds* of 800.
-  2. A model is trained on four folds (3,200 grids) and evaluated on the remaining fold, the
-     *validation fold*.
-  3. Step 2 is carried out once for each fold, five *rounds* in all, so that each fold serves once
-     as the validation fold. Every grid in the development set thereby receives an *out-of-fold
-     prediction*: a predicted rating from a model that did not train on it (explained after
-     Figure 2).
+Each advisor's 5,000 rated grids are split the same way (Figure 1):
+- **Test set ("lockbox"), 1,000 grids.** Never used for training or for choosing anything. It holds
+  all 286 grids rated by two or more advisors.
+  - Only `validity.open_lockbox()` returns these ratings. It needs a confirmation and a fully
+    committed repository, and logs each opening in [`lockbox_log.md`](lockbox_log.md).
+  - It was opened once, on 4 November, to grade the final models (the final exam).
+  - The normal loader, `validity.load_dev()`, returns test-set ratings as missing (NaN).
+- **Development set, 4,000 grids.** Used for training and for every comparison, by five-fold
+  cross-validation: deal the grids into five *folds* of 800, train on four, check on the fifth
+  (the *validation fold*), and repeat so that each fold is checked once.
 
 ![Figure 1: data split and five rounds of cross-validation](figures/stage1_cv_rounds.png)
 
-**Figure 1. Data split and five-fold cross-validation for one advisor.** The 5,000 rated grids are
-divided into a development set of 4,000 grids and a test set (the lockbox) of 1,000. The development
-set is divided into five folds of 800 grids. In each of five rounds, a new model is trained on four
-folds and validated on the remaining one: fold 1 in round 1, fold 2 in round 2, and so on. The test
-set is not used in any round. Each advisor's rated grids are split by the same procedure.
+**Figure 1. The split for one advisor.** Each row is one round of cross-validation: a fresh model
+trains on the four blue folds and is checked on the orange one. The test set (green) is used in no
+round.
 
-**Shuffle procedure.** The division into folds in step 1 is random; one such random assignment is
-called a *shuffle*. Each shuffle is fixed by a *seed*, the starting value of the random-number
-generator, so that it can be reproduced exactly. The five rounds are carried out once for each of
-three independent shuffles (seeds 0, 1 and 2; Figure 2):
-
-- **Reported values.** Within one shuffle, the five validation folds together give every
-  development-set grid one out-of-fold prediction. Each metric (the approval count and R², defined
-  under "Model scorecard") is computed on those 4,000 predictions, and the reported value is the
-  mean over the three shuffles. For the approval count, the *scorecard* (the tables printed by
-  `python validity.py`) also lists the three per-shuffle values, which show how much a result
-  varies from the random division alone.
-- **Noise threshold.** R² (the coefficient of determination, a standard accuracy measure: 1 for
-  perfect predictions, 0 for no better than predicting the average rating; see "Model scorecard")
-  is also computed separately for each of the 15 validation folds (3 shuffles × 5 rounds). The
-  standard deviation of those 15 values is the *R² noise threshold*: a difference in R² between two
-  models smaller than this is not treated as an improvement. For the *primary model* (the main
-  model, chosen during planning: gradient-boosted trees on engineered features; see "Models") it
-  ranges from 0.002 to 0.009.
-- **What the noise threshold is not.** It measures how much a single fold's R² varies with that
-  fold's difficulty. It is not the uncertainty of a *difference* between two models scored on the
-  same folds: for two similar models the difference varies much less, so the threshold is too
-  strict, and for dissimilar models it can be too lenient. Stage 2 compares close variants by their
-  paired, fold-by-fold differences instead (`docs/decisions.md`, 28 October, Stage 2 protocol).
+**Shuffle procedure.** Which grid lands in which fold is random. One such dealing is a *shuffle*,
+fixed by a *seed* so it can be repeated. We use three shuffles (seeds 0, 1, 2; Figure 2), so every
+model is trained and checked in 15 rounds.
+- Each reported number is the mean over the three shuffles. The scorecard also prints the three
+  values, which show how much a result moves from the random dealing alone.
+- The *R² noise threshold* is the spread (standard deviation) of R² over the 15 validation folds:
+  0.002–0.009 for the primary model. It measures how fold difficulty varies, not the uncertainty of
+  a difference between two models, so Stage 2 compares models fold by fold instead
+  ([`stage2_models.md`](stage2_models.md)).
 
 ![Figure 2: three shuffles of ten example grids into five folds](figures/stage1_shuffles.png)
 
-**Figure 2. Shuffle procedure, illustrated with ten example grids (A–J) in place of the 4,000
-development-set grids.** Each row shows one random assignment ("shuffle") of the same ten grids to
-the five folds of Figure 1. Under shuffle 1, for example, round 1 trains on grids A, B, D–H and J and
-validates on grids C and I (fold 1); under shuffle 2, round 1 validates on grids C and J instead.
-Grid B falls in fold 3 under shuffle 1 and in fold 1 under shuffle 3. The test set is never divided
-into folds.
+**Figure 2. Three shuffles, shown with ten example grids (A–J) instead of 4,000.** Each row deals
+the same ten grids into the five folds of Figure 1 in a different way. In shuffle 1, round 1 checks
+grids C and I (fold 1) and trains on the other eight; in shuffle 2, round 1 checks C and J.
 
-**Out-of-fold predictions.**
-- **Definition.** In each round, the model trained on four folds predicts the ratings of the grids
-  in the fifth, which it has never seen. Each such prediction is an *out-of-fold prediction*: the
-  grid was outside ("out of") the folds the model was trained on.
-- **Example.** Under shuffle 1 in Figure 2, round 1 trains a model on grids A, B, D–H and J. Its
-  predictions for grids C and I are their out-of-fold predictions.
-- **Coverage.** After five rounds, every grid in the development set has one out-of-fold
-  prediction per shuffle. Every result in the scorecard is computed from these predictions.
-- **Why only these are used.** A model's prediction for a grid it was trained on is unrealistically
-  accurate, because the model has seen that grid's true rating and may partly have memorized it.
-  An out-of-fold prediction reproduces the situation the model faces with a new grid, whose rating
-  it has never seen.
+**Out-of-fold predictions.** In each round, the model predicts the grids in its validation fold,
+which it never saw: these are *out-of-fold predictions*. After five rounds, every development grid
+has one per shuffle; in Figure 2's shuffle 1, C and I get theirs in round 1. Every scorecard number
+uses only these. A prediction for a grid the model trained on is too good, because the model has
+seen the answer.
 
-**Validation and test sets.** *Model selection* means choosing among models, features and settings
-by comparing their validation results. Each time the best of several options is chosen, part of its
-apparent advantage may be chance: the particular validation grids happened to suit it. After many
-such choices, validation results overstate accuracy on new grids; this effect is called *selection
-bias*. The test set is consulted only after the choices are fixed, so its estimate of accuracy on
-grids drawn like the rated ones is nearly unbiased. It does not measure accuracy on designed grids,
-which later stages address separately. Two qualifications apply:
-- **Early exposure.** Four exploratory analyses saw the test-set ratings before the split was fixed.
-  `docs/decisions.md` records them, how their influence was limited (no number from them is used as
-  evidence), and the exposure that remains. Choices made after them may carry a small optimistic
-  bias.
-- **Resolution.** At the development set's approval rates, each advisor's 1,000 test grids contain
-  only about 130–210 approved grids. A precision measured on so few grids is uncertain by about one
-  percentage point (one standard deviation), so the test set can reliably detect only large drops.
+**Why a separate test set.** Picking the best of several options by validation score also picks up
+luck. After many such choices, validation scores overstate accuracy (*selection bias*). The test
+set, opened once after all choices, gives a nearly unbiased check. Its limits:
+- Four early analyses saw test-set ratings before the split was fixed. `decisions.md`
+  (25 October) lists them and why their influence is small.
+- At Stage 1's approval rates, only about 130–210 of each advisor's 1,000 are approved, so a test-set precision is uncertain by
+  about one percentage point. It catches only large drops.
+- It measures accuracy on grids like the dataset's, not on designs.
 
 ## Features
 
-A model's inputs are called *features*. Two input representations are used:
-
-- **One-hot encoding (245 features).** There is one indicator per cell and district type (49 cells
-  × 5 types), equal to 1 if the cell holds that district and 0 otherwise. It specifies the district
-  of every cell, and therefore the entire grid. However, it states no relationship between cells
-  explicitly. A model must learn from the training grids which combinations of indicators mean, for
-  example, that a Park is next to a Residential cell.
-- **Engineered features (75 features).** These are measures of spatial relationships computed
-  directly from the grid. They were designed by hand from the advisors' stated priorities, such as
-  access to green space and commuting distance, and fall into five groups:
+A model's inputs are its *features*. Two kinds:
+- **One-hot cells (245):** one 0/1 indicator per cell and district (49 × 5). They describe the
+  whole grid, but say nothing about which cells are neighbours; the model must learn that.
+- **Engineered features (75):** spatial measures designed from the advisors' stated priorities,
+  such as green-space access and commuting (Figure 3):
 
 | Group | Measure | Features |
 |---|---|---|
-| Counts | Number of cells of each district | 5 |
-| Adjacency | Number of neighbouring cell pairs for each pair of districts, including a district with itself (15 pairs), counted separately for side-by-side and diagonal neighbours | 30 |
-| Distance | For each ordered pair of different districts: the mean number of steps (moves up, down, left or right) from a cell of the first to the nearest cell of the second | 20 |
-| Clusters | Number of *clusters* of each district (groups of cells joined side by side), and the size of the largest | 10 |
-| Edge / centre | Number of the district's cells on the border, and the mean number of steps from the centre cell to the district's cells | 10 |
+| Counts | Cells of each district | 5 |
+| Adjacency | Neighbouring cell pairs for each pair of districts (15 pairs), side-by-side and diagonal counted separately | 30 |
+| Distance | For each ordered pair of different districts: mean steps (up, down, left, right) from a cell of the first to the nearest cell of the second | 20 |
+| Clusters | Number of connected groups of each district, and the size of the largest | 10 |
+| Edge / centre | The district's cells on the border; mean steps from the centre cell | 10 |
 
-*Absent districts.* Some grids lack a district entirely. Every distance to or from a missing
-district is then 13 (one more than the 12 steps between opposite corners, so "absent" reads as
-"very far"). Its centre distance is 0, the same value as a single cell at the centre; its count of
-0 tells the two cases apart.
+A missing district gets distance 13 (one more than the farthest possible, 12) and centre distance
+0; its count of 0 tells it apart.
 
 ![Figure 3: one grid and 13 of its engineered features](figures/stage1_grid_features.png)
 
-**Figure 3. One grid and 13 of its 75 engineered features.** Left: grid A from Figure 2 (dataset grid
-12), with each cell coloured and lettered by district. The black bars mark the grid's six side-by-side
-Park–Residential pairs, the quantity counted by one adjacency feature. Right: all five count features
-and two examples from each of the other four groups. Each group repeats its pattern for every
-district or district pair; for example, "Park cells on the border" has a counterpart for each of the
-other four districts. `analysis.ipynb` lists all 75 values for any grid.
+**Figure 3. One grid and 13 of its 75 engineered features.** Left: grid A of Figure 2 (dataset
+grid 12). The black bars mark its six side-by-side Park–Residential pairs, which one adjacency
+feature counts. Right: all five counts and two examples from each other group; each group repeats
+for every district or pair of districts. `analysis.ipynb` lists all 75 for any grid.
 
-**Orientation.** All 75 engineered features are unchanged when a grid is rotated or reflected. The
-choice rests on the *planning experiments*, exploratory runs on the development set made before
-Stage 1 and recorded in `docs/decisions.md`:
-- **The experiment.** The primary model was also given the 245 one-hot indicators, which record
-  each cell's position, in addition to its engineered features.
-- **The result.** R² changed by −0.003 to +0.004 across the four advisors. This comes from a
-  one-off planning script that is not in the repository (`docs/decisions.md`, 25 October).
-- **What it does and does not show.** A change that small was read as "the advisors appear
-  insensitive to orientation". The 26 October audit found that reading too strong:
-  - For Wellness, compared fold by fold on the same 15 folds, the one-hot indicators in their true
-    orientation helped in almost every fold. They also beat the same indicators computed on
-    randomly rotated and reflected copies of each grid in every fold.
-  - Tax shows the same pattern, more weakly.
-  - The effect is small but consistent. It may mean these advisors care about orientation, or that
-    the dataset itself has orientation patterns; the data cannot separate the two.
-- **Next.** Stage 2 tests this directly (rule 2.2 in `docs/decisions.md`). Until then, Wellness and
-  Tax are treated as orientation-sensitive: no *augmentation* (adding the seven rotated and
-  reflected copies of each training grid, each with that grid's rating), and no rotated copies in
-  submissions. No Stage 1 model uses augmentation.
+**Orientation.** The 75 features don't change when a grid is rotated or mirrored. Stage 2's
+position test found that position matters for Wellness, Tax and Business, but not Transportation.
+So rotated copies are used neither in training for those three nor in any submission, and
+Wellness's final model adds the one-hot cells (`decisions.md`, 31 October and 1 November).
 
 ## Models
 
-Four models are compared: two model types, each given each of the two input representations.
+Four models: two types, each given each kind of input.
+- **Ridge regression:** a weighted sum of the inputs. A penalty keeps the weights small, to limit
+  *overfitting* (learning quirks of the training grids that don't hold for other grids).
+  scikit-learn.
+- **GBM (gradient-boosted trees):** several hundred small decision trees, each asking yes/no
+  questions such as "more than 8 Park cells?" and each fitted to the errors of the trees before it.
+  It can capture thresholds and interactions. LightGBM.
 
-- **Ridge regression** is a linear model.
-  - Its predicted rating is a weighted sum of the inputs. The weights are fitted to the training
-    grids under a penalty that keeps them small.
-  - The penalty limits *overfitting*: fitting quirks of the training grids that do not hold for
-    other grids, which makes a model less accurate on new grids than on those it was trained on.
-  - Implemented with scikit-learn.
-- **Gradient-boosted trees (GBM, for gradient boosting machine)** combine several hundred small
-  *decision trees*, added one at a time.
-  - A decision tree predicts by asking a short sequence of yes/no questions about the inputs, such
-    as "more than 8 Park cells?". Each final answer leads to a predicted rating.
-  - Each new tree is fitted to the errors left by the trees before it.
-  - Unlike a linear model, a GBM can represent thresholds (an effect that starts only above some
-    value) and interactions (the effect of one input depending on the value of another).
-  - Implemented with the LightGBM library.
-
-Each model is named by its type and its input. For example, *Ridge regression on engineered features*
-is a Ridge regression model given the 75 engineered features, and *GBM on one-hot inputs* is a GBM
-given the 245 one-hot indicators. In code and printed output the four are `ridge_onehot`,
-`ridge_engineered`, `gbm_onehot` and `gbm_engineered`. The *primary model*, chosen during planning
-(`docs/decisions.md`, 25 October), is GBM on engineered features.
-
-## What can and cannot be checked
-
-The course staff can compute all four advisors' ratings for any grid, including new designs, and
-the scoreboard score depends on all four. Our data is more limited. Each rated grid in the course
-data carries a true rating from one advisor only, except 286 grids rated by two or more advisors
-(283 by two, 3 by three; all held in the test set). Two consequences follow:
-
-- **Each advisor's model is checked separately,** on the grids that advisor rated. The scorecard
-  below reports these per-advisor results.
-- **A grid's validity is predicted, not checked.** For any grid, each of the four models predicts
-  its own advisor's rating.
-  - The grid is *approved* for an advisor if that prediction is at or above the advisor's *approval
-    cut-off*, a threshold set on the development set (defined under "Model scorecard").
-  - The grid is *predicted valid* only if it is approved for all four advisors.
-
-For example, grid A of Figure 2 (dataset grid 12) was rated only by Wellness. The primary model
-gives:
-
-| Advisor | Predicted rating | Approval cut-off | Approved? | True rating in the development set |
-|---|---|---|---|---|
-| Wellness | 0.840 | 0.824 | Yes | 0.867 |
-| Tax | 0.203 | 0.772 | No | None |
-| Transportation | 0.800 | 0.775 | Yes | None |
-| Business | 0.641 | 0.765 | No | None |
-
-*Source: `python validity.py --grid 12`. The Wellness prediction is out of fold, so it can be compared
-with the true rating. The other three come from models trained on those advisors' whole development
-sets. Each of the 286 grids rated by two or more advisors is in the test set for every advisor that
-rated it. Grid 12 has a development-set Wellness rating, so it is not one of them, and no other
-advisor rated it.*
-
-Only the Wellness prediction can be checked against a true rating. Grid A is not approved for Tax or
-Business, so it is predicted invalid and would not be submitted. New designs have no true ratings at
-all, so all four of their ratings are predictions.
-
-**Why a model's record applies to grids its advisor never rated.**
-- **How the checking works.** No grid is checked against all four advisors. Each model is checked
-  on its own advisor's rated grids, and then all four models are applied to every candidate.
-- **Example.** The Tax model's record is measured on grids that Tax rated, yet it is used to judge
-  grid A, which Tax never rated.
-- **Why that is justified.** Both come from the same pool: each advisor's rated grids are treated as
-  a random sample of the 500,000 (see "Data"). The Tax model's precision on its development set is
-  therefore a fair estimate of its precision on other dataset grids, such as grid A.
-- **Where it stops.** The argument does not cover new designs. They are not random draws from the
-  dataset, and a design search keeps the grids the models rate highly. That tends to concentrate
-  designs where the models over-predict. Stage 3 measures the models' accuracy on designs
-  separately.
-
-**How the joint estimate is tested.** How often a grid predicted valid is truly valid can only be
-estimated, by combining the four models' separate records (see "Why 98%" below). Two sources test
-that estimate, each only in part:
-- **The 286 grids rated by two or more advisors,** held in the test set.
-  - What they can show: whether two models are wrong on the *same* grid, for each pair of advisors
-    (36–64 grids per pair). Failures that coincide leave more grids valid (see "Why 98%"), so this
-    matters less than it seems.
-  - What they cannot show: whether a grid approved for both advisors of a pair truly passes both.
-    At 98% precision the primary model approves 13–21% of each advisor's development-set grids. If
-    approvals were independent, only about ten of the 286 grids would be approved by both models of
-    their pair; for example, Transportation–Business gives 64 × 744/4,000 × 836/4,000 ≈ 2.5.
-    Approvals are not independent, because the advisors' preferences conflict, so the true number
-    is probably smaller.
-  - None of them was rated by all four advisors.
-  - Rule 2.8 in `docs/decisions.md` fixes in advance how the result is used.
-- **The development set, for what matters more.** Whether one model's precision drops on grids that
-  another advisor's model rates highly needs only one true rating per grid. It can be measured on
-  the development set, by applying each model to the other advisors' rated grids, with far more
-  grids than the test set offers. Stage 2 does this (rule 2.8 in `docs/decisions.md`).
-- **The scoreboard.**
-  - It rates every submitted grid with all four advisors. It is expected to report only the total
-    score; it has not been released yet.
-  - An invalid grid usually lowers the score, by an amount that depends on the set: 0.0064 in the
-    starter notebook's well-spread example (see "What it costs"), less in a set of similar grids.
-    The number of failures should therefore be estimated by simulation on the submitted set itself:
-    remove grids at random and find how many removals match the reported gap.
-  - Even an exact count from one submission is weak evidence, because the number of failures among
-    100 grids varies by chance.
-  - It does not reveal which grids failed, or which advisor rejected them.
+Code names: `ridge_onehot`, `ridge_engineered`, `gbm_onehot`, `gbm_engineered`. The *primary
+model*, chosen in planning (25 October), is `gbm_engineered`.
 
 ## Model scorecard
 
-**How a model is used.** For each advisor, a model predicts the rating of every grid. A grid is
-*approved* for that advisor when its predicted rating is at or above a chosen value, the *approval
-cut-off*. Two quantities describe how well this works:
+The comparison metric is the **approval count at 98% precision** (Figure 4):
+1. Sort the 4,000 development grids by predicted rating, highest first.
+2. Approve them one at a time down the list.
+3. Stop at the last point where at least 98% of the approved grids truly pass. The number approved
+   is the *approval count*; the predicted rating there is the *cut-off*.
 
-- **Precision:** the fraction of approved grids that truly pass the advisor (true rating at least
-  0.75). A precision of 98% means that 2 of every 100 approved grids actually fail.
-- **Approval count:** the number of grids approved. A higher count leaves more candidates from which
-  to choose a diverse final set.
-
-The two trade off against each other. Approving only the grids with the highest predicted ratings
-gives high precision but a small count; approving more grids raises the count but lowers precision.
-
-**Comparison metric: approval count at 98% precision.**
-- **Definition.**
-  - To compare models on equal terms, precision is held at 98% and each model's approval count is
-    measured.
-  - The development-set grids are sorted by predicted rating, highest first, and approved one at a
-    time down the list. Approval stops at the last point at which at least 98% of the approved
-    grids truly pass.
-  - The number approved at that point is the approval count (Figure 4). The predicted rating of the
-    last grid approved is the approval cut-off.
-  - For the primary model, the cut-offs are 0.824 (Wellness), 0.772 (Tax), 0.775 (Transportation)
-    and 0.765 (Business), each the mean over the three shuffles.
-- **Interpretation.** A higher count means the model identifies more passing grids at the same
-  reliability.
-- **Caveat.** The cut-off is chosen using the true ratings of the same grids it is measured on, so
-  the count is somewhat optimistic for new grids. It ranks models but does not guarantee
-  performance.
+More approvals at the same precision means more passing grids that the model can be trusted on.
+The cut-off is set on the same grids it is scored on, so the count is slightly optimistic: it ranks
+models, but doesn't promise the same on new grids.
 
 ![Figure 4: share of approved grids that truly pass, as grids are approved in order](figures/stage1_approval_curve.png)
 
-**Figure 4. How the approval count at 98% precision is measured (Wellness, primary model, shuffle
-1).** The 4,000 development-set grids are sorted by predicted Wellness rating, highest first, and
-approved one at a time from the left. The curve shows the share of the approved grids that truly
-pass Wellness. The approval count at a precision level is the last point at which the curve is at or
-above that level. The marked points show, for precision levels of 95%, 98% and 99%, how many grids
-are approved and how many of those truly fail. The scorecard reports the mean of the three
-shuffles' approval counts.
+**Figure 4. Measuring the approval count (Wellness, primary model, shuffle 1).** Moving right
+approves grids with lower predicted ratings; the curve is the share of the approved grids that
+truly pass. The dots mark where it last stays at 99%, 98% and 95%: 506, 550 and 649 grids approved,
+of which 5, 11 and 32 fail.
 
-**Risk of approving more grids.**
-- **What it costs.** Each of the 100 submitted grids occupies one slot, and an invalid grid scores
-  nothing in it. A valid grid can contribute at most 0.01 to the score. In the starter notebook's
-  Scoring Examples, removing the first of the first 100 dataset grids, as happens when a grid is
-  invalid, lowers the score by 0.0064. That holds for a well-spread set. In a set of similar grids,
-  as a submission of grids predicted valid is likely to be, a failure costs less. Removing a grid
-  can even raise the score, because its neighbours then count a farther grid among their 10
-  nearest.
-- **Why it grows.** Each step to the right approves a grid with a lower predicted rating, which is
-  more likely to truly fail.
-- **How fast.** In Figure 4, relaxing the requirement from 98% to 95% precision approves 99 more
-  grids (550 to 649) but adds 21 failures (11 to 32). About one in five of the added
-  grids fails, although overall precision falls only to 95%.
-- **Beyond Figure 4.** The risk compounds across the four advisors (see "Why 98%"). It is also
-  likely to be higher for designed grids, which are less familiar to the models; Stage 3 measures it
-  directly.
-- **When it can still pay.** Approving more grids gives a larger set of candidates, from which a more
-  diverse final 100 can be chosen. Relaxing precision is worthwhile only if that gain in diversity
-  outweighs the score lost to the additional invalid grids. Stage 4 chooses the final 100 on exactly
-  this basis.
+**Risk of approving more grids.** From 98% to 95% precision, Figure 4 approves 99 more grids but adds 21
+failures: about one in five of the added grids fails. A failed grid scores nothing. In the starter
+notebook's example, removing one grid cuts the score by 0.0064 (less in a set of similar grids).
 
 **Why 98%.**
-- **The arithmetic.** A grid counts toward the score only if it passes all four advisors. If each
-  advisor's model is correct for 98% of the grids it approves, a grid approved for all four advisors
-  is valid with probability of about 0.98 × 0.98 × 0.98 × 0.98 ≈ 92%.
-- **An average, not a per-grid chance.** The 98% is averaged over all of a model's approved grids,
-  most of which sit well above the cut-off. Grids just above the cut-off fail far more often than 2
-  in 100; grids well above it almost never fail. So 92% describes a grid drawn at random from the
-  approved grids, not one that only just clears all four cut-offs, which is much less likely to be
-  valid (`docs/decisions.md`, 26 October). A design search tends to push grids just past the
-  cut-offs, so designs need a margin above them, and Stage 4 must estimate each grid's chance of
-  passing from how far above the cut-offs its predictions sit.
-- **Related errors.** That product treats the four models' errors as unrelated. At 98% it is close
-  to the worst case. Suppose each model wrongly approves at most 2 of every 100 submitted grids.
-  Then at most 8 of the 100 fail any advisor, so at least 92% are valid, however the errors are
-  related. If the models tend to fail on the same grids, more than 92% are valid.
-- **The assumption that matters.** Each model's 98% precision is measured on development-set grids.
-  The 92% holds only if that precision carries over to the grids actually submitted, and two things
-  could break it:
-  - The submitted grids are those approved by all four models, not a random sample of one model's
-    approvals, and a model's precision on that subset may be lower. Rule 2.8 measures this on the
-    development set before the test set is opened; the test-set grids rated by two or more advisors
-    add a small supplementary check.
-  - Designed grids differ from the dataset. The caveat above already makes the 98% somewhat
-    optimistic for dataset grids. Stage 3 tests the models on designs.
-  - The scoreboard measures the combined result, but cannot show which of these caused a
-    shortfall.
-- **The trade-off.** The table below shows it for the primary model:
+- A grid counts only if it passes all four advisors. At 98% each, 0.98⁴ ≈ 92% of the grids that
+  all four approve are valid, if the models' errors are unrelated. 92% is also near the worst case:
+  if each model wrongly approves at most 2 in 100, at most 8 in 100 fail.
+- 98% is an average over all approved grids. Grids just above the cut-off fail far more often, and
+  a design search pushes grids to just above it. So designs need a *cushion* above the cut-off. The
+  scoreboard later showed that a cushion of 0.06 was enough (README, Figure 2).
+- Only 11–17 failures lie behind each advisor's 98%, so it is uncertain by about a point either
+  way: 4–13 invalid grids per 100, not exactly 8.
 
-| Precision per advisor | Valid for all four advisors, if errors are unrelated (precision⁴) | Expected invalid grids per 100 | Approval count: Wellness | Tax | Transportation | Business |
+| Precision per advisor | Valid for all four (precision⁴) | Invalid per 100 | Approved: Wellness | Tax | Transportation | Business |
 |---|---|---|---|---|---|---|
 | 90% | 66% | 34 | 844 | 1,008 | 959 | 1,026 |
 | 95% | 81% | 19 | 668 | 916 | 840 | 931 |
 | **98%** | **92%** | **8** | **534** | **828** | **744** | **836** |
 | 99% | 96% | 4 | 473 | 757 | 711 | 800 |
 
-*Source: `python validity.py` (last table of its output), computed by `validity.precision_tradeoff()`
-from the same out-of-fold predictions as the scorecard. Approval counts are means over the three
-shuffles. The second column is the precision raised to the fourth power, and the third is 100 × (1 −
-second column).*
+*Source: `python validity.py` (its last table), primary model; approvals are three-shuffle means.*
 
-**How precise the 98% is.** Each advisor's 98% rests on few failures: at most 2% of 534–836
-approvals, about 11–17 grids. Each advisor's precision is therefore uncertain by roughly one
-percentage point either way, and the expected number of invalid grids per 100 at this level is
-roughly 4–13 rather than exactly 8 (`docs/decisions.md`, 26 October).
-
-Raising precision from 98% to 99% halves the expected number of invalid grids but approves 4–11%
-fewer. Lowering it to 95% approves 11–25% more but more than doubles the invalid grids. The 98% level
-is a working balance used to compare models. The cut-offs used for the submitted grids are set by
-experiment in Stage 3. They include a *safety margin* for designed grids: how far above 0.75 their
-predicted ratings must be.
-
-**R² (coefficient of determination).**
-- **Definition.** R² is 1 minus the ratio of the model's mean squared prediction error to the
-  variance of the true ratings. A value of 1 means perfect predictions; 0 means no better than
-  predicting the average rating for every grid.
-- **Why it is not the main metric.** It averages errors over all grids, including errors far from
-  0.75, such as predicting 0.2 for a grid rated 0.3. Such errors never change whether a grid passes.
-  The approval count measures only the decision that matters.
-- **Where it is still used.**
-  - R² is reported as a general check.
-  - It sets the R² noise threshold.
-  - It sets the Stage 1 completion check: the scorecard's R² values must match the planning
-    experiments' to within 0.01.
-  - It decided rule 2.2 (whether position-dependent features help) until 28 October; the revised
-    rule compares errors fold by fold instead (`docs/decisions.md`).
+**R².** 1 minus the ratio of mean squared error to the variance of the true ratings: 1 is perfect, 0
+is no better than always predicting the average. It is a general check, not the main metric,
+because it counts errors far from 0.75 that never change whether a grid passes.
 
 **Results.**
 
-| Approval count at 98% precision: mean of the three shuffles [per-shuffle counts] | Wellness | Tax | Transportation | Business |
+| Approval count at 98% precision: mean [per shuffle] | Wellness | Tax | Transportation | Business |
 |---|---|---|---|---|
-| Ridge regression on one-hot inputs | 67 [68/66/67] | 611 [612/608/612] | 0 [0/0/0] | 40 [4/62/55] |
-| GBM on one-hot inputs | 76 [31/78/118] | 543 [562/512/556] | 5 [4/7/5] | 82 [104/74/69] |
+| Ridge regression on one-hot cells | 67 [68/66/67] | 611 [612/608/612] | 0 [0/0/0] | 40 [4/62/55] |
+| GBM on one-hot cells | 76 [31/78/118] | 543 [562/512/556] | 5 [4/7/5] | 82 [104/74/69] |
 | Ridge regression on engineered features | 242 [261/241/223] | 817 [814/822/815] | 19 [1/30/27] | 182 [185/185/177] |
 | **GBM on engineered features** | **534 [550/523/528]** | **828 [842/815/828]** | **744 [745/750/738]** | **836 [847/814/847]** |
-| *Approval cut-off (primary model)* | *0.824* | *0.772* | *0.775* | *0.765* |
-| *Share of the advisor's truly passing grids that are approved (primary model)* | *52%* | *86%* | *74%* | *84%* |
+| *Cut-off (primary model)* | *0.824* | *0.772* | *0.775* | *0.765* |
+| *Share of truly passing grids approved (primary model)* | *52%* | *86%* | *74%* | *84%* |
 
-| R² (mean of the three shuffles; ± the R² noise threshold, the spread of single-fold values) | Wellness | Tax | Transportation | Business |
+| R², mean of three shuffles ± noise threshold | Wellness | Tax | Transportation | Business |
 |---|---|---|---|---|
-| Ridge regression on one-hot inputs | 0.481 ± 0.027 | 0.757 ± 0.024 | 0.121 ± 0.029 | 0.481 ± 0.036 |
-| GBM on one-hot inputs | 0.502 ± 0.025 | 0.704 ± 0.015 | 0.293 ± 0.026 | 0.495 ± 0.026 |
+| Ridge regression on one-hot cells | 0.481 ± 0.027 | 0.757 ± 0.024 | 0.121 ± 0.029 | 0.481 ± 0.036 |
+| GBM on one-hot cells | 0.502 ± 0.025 | 0.704 ± 0.015 | 0.293 ± 0.026 | 0.495 ± 0.026 |
 | Ridge regression on engineered features | 0.695 ± 0.024 | 0.871 ± 0.016 | 0.650 ± 0.020 | 0.603 ± 0.022 |
 | **GBM on engineered features** | **0.888 ± 0.009** | **0.967 ± 0.002** | **0.935 ± 0.005** | **0.969 ± 0.004** |
 
-*Source: `python validity.py`, which prints these tables. Bold rows are the primary model.*
+*Source: `python validity.py`. Bold: the primary model.*
 
-Findings:
+1. **Features matter more than model type.** For Transportation, the GBM goes from R² 0.293 on
+   one-hot cells to 0.935 on engineered features. Changing only one of the two (model or input)
+   approves 5 or 19 grids, against 744 with both.
+2. **Wellness is the limit.** The primary model approves 52% of the truly passing Wellness grids,
+   against 74–86% for the others. It became Stage 2's first target.
+3. **The primary model leads for every advisor.** For three advisors the lead is far beyond the
+   shuffle-to-shuffle spread (at most 33 approvals). For Tax, Ridge on engineered features is
+   within that spread on approvals (817 against 828) but far behind on R² (0.871 against 0.967).
+4. **Stage 1 reproduces the planning runs:** every R² is within 0.01 of its planning value (largest
+   gap 0.0052).
 
-1. **Input representation matters more than model type, and Transportation needs both.**
-   - Engineered features raise R² far more than switching to GBM does. For Transportation, the same
-     GBM goes from R² 0.293 with one-hot inputs to 0.935 with engineered features.
-   - On approval counts, Transportation needs both changes: GBM on one-hot inputs approves 5 grids
-     and Ridge regression on engineered features 19, against 744 for GBM on engineered features.
-2. **Wellness is the limiting advisor.** At 98% precision, the primary model approves 52% of
-   the development-set grids that truly pass Wellness, compared with 74%–86% for the other
-   advisors. It is the first target of the Stage 2 feature study (Stage 2's search for better
-   features).
-3. **The primary model leads for every advisor, by more than the noise for three of them.**
-   - Across shuffles, the primary model's approval counts vary by at most 33 grids, and its R²
-     noise threshold is 0.002–0.009.
-   - For Wellness, Transportation and Business, its lead over every other model is far larger than
-     that variation.
-   - For Tax, GBM and Ridge regression on engineered features approve 828 and 817 grids. That gap
-     is within the variation between shuffles: Ridge regression leads in shuffle 2, 822 to 815.
-     Their R² values (0.967 and 0.871) differ far beyond the noise.
-   - The spread across shuffles reflects only how the same 4,000 grids were divided into folds,
-     not which grids happened to be rated, so it understates the uncertainty. Close comparisons in
-     Stage 2 should be paired, fold by fold or by resampling grids.
-4. **Stage 1 is complete.**
-   - Its completion check required the R² values to match those of the planning experiments to
-     within 0.01.
-   - The largest difference is 0.0052, for GBM on one-hot inputs on Business. The check compares
-     the scorecard's three-shuffle mean with the planning value, which used the first shuffle only.
+`analysis.ipynb` shows these results as charts (its Figures 5–7).
 
-`analysis.ipynb` presents these results graphically: approval counts by model (notebook Figure 5)
-and predicted-versus-true plots for each advisor (notebook Figures 6–7).
+## What can and cannot be checked
 
-**Where the numbers come from.**
+- **Each model is checked only on its own advisor's grids.** A rated grid carries one advisor's
+  rating, apart from the 286 in the test set.
+- **Validity is predicted, not checked.** All four models predict, and a grid is *predicted valid*
+  only if all four approve. Grid A (dataset grid 12), rated only by Wellness:
 
-| Numbers | Produced by |
-|---|---|
-| Grid and rating counts (500,000; 5,000; 286 = 283 + 3; 480,289; 36–64 per pair of advisors) | `python validity.py --data`, which reads only which grids are rated; checked by `tests/test_protocol.py` |
-| Approval counts, approval cut-offs, shares, R² values, noise thresholds and the completion check | `python validity.py` |
-| Precision trade-off table ("Why 98%") | `python validity.py`, via `validity.precision_tradeoff()` |
-| Grid A's predictions and cut-offs | `python validity.py --grid 12` |
-| Figures 1–4, and the counts quoted from Figure 4 | `python make_figures.py` (Figure 4 uses the saved predictions from `python validity.py`) |
-| About ten co-rated grids approved for both advisors of their pair | The pair counts from `python validity.py --data` and the approval counts above, multiplied as shown under "How the joint estimate is tested" |
-| Cost of one invalid grid (0.0064) | The starter notebook's Scoring Examples (Case 3) |
-| R² change from adding the one-hot inputs (−0.003 to +0.004) | A one-off planning script, not in the repository; recorded in `docs/decisions.md` (25 October). Stage 2's harness reproduces it when it compares rule 2.2's true-orientation arm with the incumbent |
-| Scoreboard rules (five submissions per day per group) and the deadline | The course Canvas page: external, not in the repository |
-| Audit observations quoted in words (orientation, per-grid pass rates, the random-sample checks) | The 26 October audit, recorded with its numbers in `docs/decisions.md`; its scripts are not yet in the repository |
-| Planning-experiment R² values (completion check) | One-off exploratory scripts, run before the Stage 1 scorecard was added to `validity.py`; recorded in `docs/decisions.md`. `python validity.py` reproduces the four Ridge regression and GBM rows to within 0.0052 |
+| Advisor | Predicted | Cut-off | Approved? | True rating |
+|---|---|---|---|---|
+| Wellness | 0.840 | 0.824 | Yes | 0.867 |
+| Tax | 0.203 | 0.772 | No | — |
+| Transportation | 0.800 | 0.775 | Yes | — |
+| Business | 0.641 | 0.765 | No | — |
+
+*Source: `python validity.py --grid 12`. The Wellness prediction is out of fold; the others come
+from models trained on each advisor's whole development set. Grid A is predicted invalid.*
+
+- **A model's record carries over to grids its advisor never rated,** because both come from the
+  same random pool ("Data").
+- **It does not carry over to designs.** A design search keeps the grids the models rate highly,
+  which gathers up the models' over-predictions. Hence the cushion, and the outside checks: the
+  fooling check and the scoreboard ([`architecture.md`](architecture.md), "Checks").
+- **Do the models fail on the same grids?** Before the final exam, `test_set.py --expect` measured
+  each model's precision on grids another advisor's model also approves. On the test set, 10 of the
+  286 co-rated grids were approved by every rater's model, and all 10 passed (`decisions.md`,
+  4 November): too few to measure, but no counter-example.
+- **The scoreboard** is the only check of all four advisors at once. It reports one score. The
+  number of failed grids is worked out from the gap to the score if all had passed (README,
+  Figure 2).
 
 ## How the code fits together
 
-This section maps the code in three layers:
-- the whole project, from the course data to a submitted file;
-- each Stage 1 command, function by function, with the data passed between steps;
-- reference tables: what each file does, what it uses, and where outputs go.
+Stage 1's commands (the whole flow is in the [README](../README.md#code-flow)):
 
-It describes the code as it is now. Later stages extend the map as their code is written.
-
-### The whole project, from course data to a submission
-
-```text
-●  built in Stage 1      ○  planned: file names from the project plan, not yet written
-
-THE MAIN PATH
-● ./setup_data.sh        downloads the course data at the pinned commit into data/cp2-repo/:
-        │                  500,000 grids, the advisors' ratings, the course's utils_public.py
-        ▼
-● validity.py            Stage 1: reads the data, hides the test set, and measures how accurate
-        │                  each kind of model is → the scorecard
-        │                  (it calls ● features.py to turn grids into model inputs)
-        ▼
-○ surrogates.py          Stage 2: train the final models, open the test set once,
-        │                  and predict all four ratings for every dataset grid
-        ▼
-○ generate.py            Stage 3: design new grids that all four models approve
-        ▼
-○ select_submission.py   Stage 4: choose the final 100 by expected score, using ● scoring.py:
-        │                  ├─ scoring.diversity() on many simulated "which grids failed" outcomes
-        │                  └─ scoring.check_submission(), then save and log submissions/<name>.npy
-        ▼
-  course scoreboard      the staff rate every grid with all four advisors and report one score
-
-ALONGSIDE IT
-● features.py            grids → model inputs: one-hot (245 numbers per grid) or engineered
-                           features (75 per grid). It reads no files; validity.py and plots.py
-                           call it
-● scoring.py             the course's diversity score, diversity(), and the submission format
-                           check, check_submission(). Built now for Stage 4; in Stage 1 only the
-                           README Figure 1 check and the tests call it. validity.py never does
-● plots.py               draws every figure. ● make_figures.py saves them to docs/figures/, and
-                           ● analysis.ipynb shows them interactively
-● starter_notebook.ipynb the course's assignment notebook, adapted to run locally. Its baseline
-                           solution saves submissions/submission_<date>_<time>.npy
-● tests/                 the automated checks, run by pytest and on GitHub after every push
-```
-
-### Three things called "score"
-
-| Name | What it is | Where it is used |
+| Command | What it does | Writes |
 |---|---|---|
-| The *score* | The submission's diversity score, computed by the course with `utils_public.diversity_score` | Our identical copy is `scoring.diversity()`. In Stage 1 it is used only to check README Figure 1 and in the tests; Stage 4 uses it to choose the final 100 |
-| `validity.score()` | A summary of one model's out-of-fold predictions for one advisor: approval count and cut-off, the share of truly passing grids approved, R² and its noise threshold | Called by `validity.scorecard()`. It measures model accuracy and never calls `scoring.diversity()` |
-| The *scorecard* | The tables printed by `python validity.py`: one `validity.score()` result per model and advisor | The terminal, and the "Model scorecard" section of `analysis.ipynb` |
+| `./setup_data.sh` | Fetches the course repository at the commit pinned in `course_commit.txt` | `data/cp2-repo/` |
+| `python validity.py` | The scorecard: out-of-fold predictions for 4 models × 4 advisors, then the tables above | `data/cache/oof/` |
+| `python validity.py --grid 12` | Grid A's table | nothing |
+| `python validity.py --data` | The counts under "Data" | nothing |
+| `python make_figures.py --stage 1` | Figures 1–4 (`--stage 0`: the README's Figure 1) | `docs/figures/` |
+| `analysis.ipynb` | The same results, interactively, plus Figures 5–7 | — |
 
-The course's ratings file is also named `scores.npy`. Its contents are what these documents call
-*ratings*.
+`python validity.py` runs `load_dev()`, then for each model and advisor `out_of_fold()` (features,
+then the 15 rounds from `cv_splits()`), then `score()` (approval count and cut-off from
+`approved_at()`, R², noise threshold), then prints the tables.
 
-### Stage 1, command by command
-
-#### ① `./setup_data.sh`: get the course data
-
-| Mode | What it does | Writes |
-|---|---|---|
-| `./setup_data.sh` | Reads the pinned commit from `course_commit.txt`, fetches only that commit of the course repository, checks it out, and confirms that key files are present (`utils_public.py`, `datasets/scores.npy`, `datasets/grids_0.npy` and one district image) | `data/cp2-repo/` |
-| `./setup_data.sh --check` | Asks GitHub for the course repository's latest commit and compares it with the pin. Exit code 0 means up to date, 1 means the course repository has moved, 2 means GitHub could not be reached | Nothing |
-| `./setup_data.sh --update` | Fetches the latest commit, checks it out, lists the changed files (showing any change to `utils_public.py` in full) and records the new pin | `data/cp2-repo/`, `course_commit.txt` |
-
-- **A broken pin file stops every mode.** If `course_commit.txt` is missing or holds no valid
-  40-character commit hash, the script says so and exits with code 3, so 1 keeps meaning "the
-  course repository has moved".
-- **The starter notebook can bypass the pin.** If `data/cp2-repo/` is missing, the first cell of
-  `starter_notebook.ipynb` downloads the course repository's latest commit instead. Running
-  `./setup_data.sh` afterwards checks out the pinned commit again, and `tests/test_pin.py` fails
-  while the two differ.
-
-#### ② `python validity.py`: the model scorecard
-
-Each line names a function and what it does. The data passed between steps is described on the
-right; "4,000 × 75" means 4,000 grids with 75 numbers each.
-
-```text
-main()
-├─ scorecard()
-│  ├─ load_dev()                     once, before the loop:
-│  │  ├─ _load_raw()                 reads data/cp2-repo/datasets/grids_0–4.npy → 500,000 × 7 × 7 grids
-│  │  │                              reads data/cp2-repo/datasets/scores.npy    → 500,000 × 4 ratings
-│  │  │                                                                           (NaN = not rated)
-│  │  └─ lockbox_mask()              marks the test set (1,000 ratings per advisor, seed 2156);
-│  │                                 load_dev() returns those ratings as NaN
-│  └─ for each of the 4 models × 4 advisors:
-│     ├─ (selects this advisor's development set: 4,000 grids and their ratings)
-│     ├─ out_of_fold()               → predictions: 3 shuffles × 4,000 grids
-│     │  ├─ Variant.featurize()      → features.onehot()       4,000 × 245
-│     │  │                             or features.engineered() 4,000 × 75
-│     │  ├─ cache_key()              a fingerprint of those inputs and the settings listed below
-│     │  ├─ saved under that fingerprint in data/cache/oof/?   yes → load them; skip the rest
-│     │  └─ otherwise:
-│     │     ├─ cv_splits()           15 rounds: 3 shuffles (seeds 0, 1, 2) × 5 folds. In each round,
-│     │     │                        Variant.make_model() builds a fresh model (Ridge regression or
-│     │     │                        LightGBM's GBM), trains it on 3,200 grids and predicts the other 800
-│     │     └─ saves the predictions: data/cache/oof/<model>-<fingerprint>.npy, plus a .json description
-│     └─ score()                     → one summary for this model and advisor:
-│                                      - approval count and cut-off, via approved_at()
-│                                      - share of the advisor's truly passing grids that are approved
-│                                      - R², and the R² noise threshold (cv_splits() again, to score
-│                                        each of the 15 validation folds separately)
-│                                      - RMSE for grids with true ratings 0.6–0.9
-├─ print_scorecard()                 prints the scorecard tables, then the Stage 1 completion check
-│                                    (three-shuffle mean R² against the planning experiments)
-└─ if the primary model (gbm_engineered) was scored:
-   ├─ precision_tradeoff()           the "Why 98%" table: approved_at() at 90%, 95%, 98% and 99%
-   └─ print_precision_tradeoff()     prints it
-```
-
-- **Saved predictions.** The fingerprint (`cache_key()`) covers:
-  - the grids themselves and the model inputs built from them, so editing a feature definition
-    changes the fingerprint even if no version label was changed;
-  - which grids were used (their row numbers among the 500,000) and their ratings;
-  - the model and its settings (`Variant.spec()`: the Ridge penalty or the GBM settings, and the
-    feature-definition version label);
-  - the NumPy, SciPy and scikit-learn versions, and LightGBM's for GBM models;
-  - the number of folds and the shuffle seeds;
-  - the test-set seed;
-  - the course commit (`course_pin()`, read from `course_commit.txt`).
-
-  Changing any of these forces a fresh computation. The first full run takes about 8 minutes;
-  later runs load the saved predictions in a few seconds.
-- **What the fingerprint does not cover.** Edits to the code that leave every setting unchanged:
-  `Variant.make_model()`, the training loop in `out_of_fold()`, `cv_splits()` beyond its fold count
-  and seeds, and, for a model declared with augmentation, `fold_data()`, `features.augment()` and
-  the orientations it uses (`features.orientations()`, `features.SYMMETRIES`). Nor does it record
-  the Python version, which `environment.yml` pins. After such an edit, run with `--no-cache` or
-  delete `data/cache/oof/`.
-- **Augmentation path.** `fold_data()` and `features.augment()` are used only by models declared
-  with augmentation. No Stage 1 model uses it, but the leakage tests exercise that path, including
-  `out_of_fold()` with augmentation.
-
-Other ways to run `validity.py`:
-
-| Command | Path through the code | Writes |
-|---|---|---|
-| `python validity.py --variants gbm_engineered` | As above, for the listed models only. The "Why 98%" table appears only if `gbm_engineered` is listed | As above |
-| `python validity.py --no-cache` | As above, but ignores saved predictions and recomputes every one | Replaces the saved predictions |
-| `python validity.py --grid 12` | `print_grid_report()` → `grid_report()`. For each advisor, `out_of_fold()` (saved predictions) and `approved_at()` give that advisor's cut-off. If the advisor rated grid 12 in the development set, its out-of-fold prediction is shown with the true rating. Otherwise, a model is trained on all 4,000 of that advisor's development-set grids and predicts grid 12 | Nothing, once predictions are saved (otherwise it first computes and saves the primary model's) |
-| `python validity.py --data` | `print_data_summary()` → `data_summary()`: `_load_raw()`, reading only which grids are rated, and `lockbox_mask()` for the test-set sizes | Nothing |
-
-**No command opens the test set yet.**
-- `open_lockbox()` is the only sanctioned route to the test-set ratings. The private `_load_raw()`
-  also holds them, but its callers read only which grids are rated.
-- Stage 2 opens it once, with `confirm=True`, from a committed grading script. It refuses while git
-  shows anything uncommitted in the repository, untracked files included, or if the folder has no
-  repository of its own (rule 2.7).
-- Each confirmed opening appends a line (time, full commit hash, calling script and reason) to
-  `docs/lockbox_log.md`, creating the file the first time.
-- A refused call, like those in `tests/test_protocol.py`, loads no rating and writes nothing.
-
-#### ③ `python make_figures.py`: the documentation figures
-
-```text
-main()                               --stage 0 or --stage 1 makes one stage's figures; default: both
-├─ readme()                          stage 0: the README's figure
-│  ├─ validity.load_dev()            the grids
-│  └─ plots.fig_diversity_example()                                  → readme_diversity.png
-│     └─ plots.diversity_example()   distances among dataset grids 0–99; checks that their
-│                                    total equals scoring.diversity()
-└─ stage1()                          stage 1: Figures 1–4 of this document
-   ├─ validity.load_dev()            ten Wellness development-set grids become examples A–J
-   ├─ plots.fig_cv_rounds()                                          → stage1_cv_rounds.png
-   ├─ plots.fig_shuffles()           folds from validity.cv_splits()   → stage1_shuffles.png
-   ├─ plots.fig_grid_features()      values from features.engineered() → stage1_grid_features.png
-   ├─ validity.scorecard(["gbm_engineered"])   the primary model's saved predictions
-   │                                 (computed and saved first if missing, which takes minutes)
-   └─ plots.fig_approval_curve()     drawn from those results, with validity.approved_at()
-                                                                     → stage1_approval_curve.png
-```
-
-Each figure is saved by `_save()` into `docs/figures/` at 150 dpi.
-
-#### ④ `analysis.ipynb`: the same results, interactively
-
-| Notebook section | Calls | Shows |
-|---|---|---|
-| Opening code cell | `validity.load_dev()` | Number of grids, and development-set ratings per advisor |
-| Stage 1 · Data split | `plots.fig_cv_rounds()`, `plots.fig_shuffles()` | Figures 1–2 |
-| Stage 1 · Engineered features | `plots.fig_grid_features()`, `features.engineered()` | Figure 3, and all 75 values for the grid numbered `i` |
-| Stage 1 · Model scorecard | `validity.scorecard()` (saved predictions; computed if missing), `validity.print_scorecard()`, `validity.precision_tradeoff()`, `validity.print_precision_tradeoff()` | The scorecard tables |
-| Stage 1 · Model scorecard (continued) | `plots.fig_approval_curve()`, `plots.fig_scorecard()`, `plots.fig_pred_vs_actual()` | Figures 4–7 |
-
-#### ⑤ The checks
-
-| Command or file | What it checks | Code it exercises |
-|---|---|---|
-| `pytest`: `tests/test_features.py` | The features | `features.engineered()`, compared against the slow, independent `tests/reference_features.py` and checked to be unchanged under all 8 `orientations()`; `orientations()` itself, checked to give the 8 distinct rotations and reflections; `onehot()`, checked by rebuilding each grid from it; `augment()`, checked to keep each copy with its own grid's rating; empty input |
-| `tests/test_protocol.py` | The data split, leakage and saved predictions | `validity._load_raw()` (which grids are rated only), `lockbox_mask()`, `lockbox_fingerprint()`, `load_dev()`, `data_summary()`, `cv_splits()`, `fold_data()`, `out_of_fold()` (with a spy model that refuses to predict a grid it trained on, or a rotated or reflected copy of one, with and without augmentation), `cache_key()`, `open_lockbox()` (its refusals, unconfirmed or with anything uncommitted, and a confirmed opening on made-up data with a temporary log), `_git_state()` (on temporary git repositories: untracked, edited and staged files, git set to hide untracked files, and a folder without its own repository) and `VARIANTS`; `features.orientations()` |
-| `tests/test_metrics.py` | The comparison metric, on made-up data | `validity.approved_at()` (including ties and no approvals), `score()` (including a single shuffle, and shuffles that approve nothing), `precision_tradeoff()` |
-| `tests/test_scoring.py` | The score and the submission check | `scoring.diversity()` against the course's `utils_public.diversity_score`; `scoring.check_submission()` |
-| `tests/test_palette.py` | The figure colours | `plots.DISTRICT_COLOURS`, `plots.SURFACE` |
-| `tests/test_pin.py` | The course data version | `validity.course_pin()` against the commit checked out in `data/cp2-repo/`, and no edited files in that clone |
-| `tests/conftest.py` | Shared setup, not a test | Supplies test grids, and skips data-dependent tests when the course data is missing (on GitHub, they fail instead) |
-| `python tests/fault_injection.py` | That the tests catch eleven faults | Seven for Stage 1 (below) and four for Stage 2's harness (`tests/test_search.py`), each test run on the unchanged code and then with a fault applied in memory |
-| GitHub: `.github/workflows/tests.yml` | Every push and pull request | Runs `./setup_data.sh`, builds the environment from `environment-ci.yml`, then runs `pytest` |
-| GitHub: `.github/workflows/course-updates.yml` | Daily, once the file is on `main` | Runs `./setup_data.sh --check` |
-
-### Reference
-
-**What each file does, and what it depends on.**
-
-| File | Main functions | Uses | Used by |
-|---|---|---|---|
-| `features.py` | `onehot()`, `engineered()`, `orientations()`, `augment()` | NumPy, SciPy | `validity.py`, `plots.py`, `analysis.ipynb`, tests |
-| `validity.py` | `load_dev()`, `open_lockbox()`, `cv_splits()`, `out_of_fold()`, `score()`, `scorecard()`, `grid_report()`, `data_summary()` | `features.py`, scikit-learn, LightGBM (imported for GBM models whenever one is built or its saved predictions are looked up, because the fingerprint records LightGBM's version) | `make_figures.py`, `plots.py` (Figures 2 and 4), `analysis.ipynb`, `starter_notebook.ipynb` (`lockbox_mask()`, when run locally), tests |
-| `scoring.py` | `diversity()`, `check_submission()` | NumPy only | `plots.py` (the README Figure 1 check), tests; Stage 4 |
-| `plots.py` | One `fig_…()` function per figure | `features.py`; `validity.py` and `scoring.py` inside the figures that need them | `make_figures.py`, `analysis.ipynb`, `tests/test_palette.py` |
-| `make_figures.py` | `readme()`, `stage1()` | `plots.py`, `validity.py` | The command line |
-| `starter_notebook.ipynb` | The course's assignment and baseline solution | The course's `utils_public.py`, in `data/cp2-repo/`; `validity.lockbox_mask()` when run locally | Run by hand |
-
-**Where outputs go.**
-
-| Output | Written by | In git? |
-|---|---|---|
-| Scorecard tables, grid reports, data counts | `validity.py` | Printed in the terminal, not saved. The scorecard tables also appear in `analysis.ipynb`'s committed outputs |
-| `data/cp2-repo/` | `setup_data.sh`, at the pinned commit (the starter notebook can download an unpinned copy; see ①) | No: about 70 MB, and it belongs to the course |
-| `data/cache/oof/` | `validity.out_of_fold()` | No; safe to delete, since it is recomputed on demand. Files from earlier fingerprints stay until deleted |
-| `docs/figures/*.png` | `make_figures.py` | Yes |
-| `submissions/submission_<date>_<time>.npy` | `starter_notebook.ipynb` (its last cell); later, Stage 4's `select_submission.py` | Yes |
-| `course_commit.txt` | `setup_data.sh --update` | Yes |
-| `docs/lockbox_log.md` | `validity.open_lockbox()` | Yes. It is created at the first test-set opening; there has been none yet |
+**Saved predictions.** `out_of_fold()` saves its predictions under a fingerprint (`cache_key()`) of
+the grids, inputs, ratings, model settings, folds, seeds, library versions and course commit.
+Changing any of these recomputes them (about 8 minutes; a few seconds when saved). Not covered:
+code edits that leave every setting unchanged (`make_model()`, the training loop, the inside of
+`cv_splits()`, the augmentation helpers). After such an edit, run `python validity.py --no-cache`.
 
 ## Automated tests
 
-`pytest` runs the suite locally, and GitHub Actions (GitHub's automation service) runs it on every
-push. Each check guards against an error that would corrupt results without causing a crash:
+`pytest` runs locally and on GitHub after every push. Each test guards against an error that would
+spoil results without a crash:
 
-| Check | Error it prevents |
+| File | Checks |
 |---|---|
-| Every engineered feature is unchanged under all 8 rotations and reflections | A feature that depends on orientation |
-| The fast, array-based feature code matches a simple, independent implementation | Errors in the optimized feature code |
-| The list of test-set grids matches a stored fingerprint (a hash that changes if any grid is added or removed) | An altered split, which would invalidate earlier results |
-| Test-set and development-set grids are disjoint, and `load_dev()` hides all test-set ratings | Test-set ratings reaching training |
-| No test-set grid appears in the development set as a rotated or reflected copy | An indirect form of the same leak |
-| Augmentation is applied only to the training folds, after splitting | Rotated copies of validation grids reaching training |
-| Every out-of-fold prediction comes from a fresh model that never trained on that grid, or on a rotated or reflected copy of it, with and without augmentation | A model graded on grids it has already seen |
-| The test set opens only when confirmed and with everything in the repository committed, untracked files included whatever git's settings say; a refusal loads and logs nothing; a confirmed opening returns only test-set ratings and records itself (checked on made-up data) | A silent, untraceable or over-broad opening of the test set |
-| Saved predictions are reused only if the grids, the model inputs, the ratings, the model settings, the number of folds, the shuffle seeds, the library versions and the course commit all match | Reuse of outdated predictions (the exceptions are listed under "How the code fits together") |
-| The approval-count calculations behave as defined, including ties and advisors with no approvals | Errors in the comparison metric |
-| `features.orientations()` gives the 8 distinct rotations and reflections | Rotation checks that silently compare grids with themselves |
-| The grid and rating counts quoted under "Data" match the course data | Documentation that misstates the data |
-| `scoring.diversity` equals the course's `diversity_score` exactly | Optimizing a subtly different objective |
-| The submission checker rejects wrong shapes, arrays that are not 64-bit integers, values outside 0–4 and, by this project's own rule, duplicate grids | Submissions in the wrong format |
-| Every pair of district colours remains distinguishable, including under simulated colour blindness | Figures in which two districts look alike |
-| The downloaded course data matches the pinned commit, with no edited files | Building on course data that has changed |
+| `test_features.py` | The 75 features match a slow, independent version, and don't change under all 8 rotations and mirrors |
+| `test_protocol.py` | The test-set list matches a stored fingerprint; test and development grids don't overlap, even as rotated copies; `load_dev()` hides test ratings; every out-of-fold prediction comes from a fresh model that never saw that grid; the test set opens only when confirmed and committed, and logs itself; saved predictions are reused only on a matching fingerprint; the "Data" counts |
+| `test_metrics.py` | Approval count and cut-off behave as defined, including ties |
+| `test_scoring.py` | `scoring.diversity` equals the course's `diversity_score`; the submission check rejects bad formats and duplicate grids |
+| `test_palette.py`, `test_pin.py` | District colours stay distinguishable, including with colour blindness; the course data matches the pin |
 
-The Stage 1 checks were themselves tested by introducing seven deliberate faults, and each was
-detected (Stage 2 adds four more for its harness):
-- a changed test-set seed;
-- augmentation before the split;
-- a corrupted feature definition;
-- models trained on the grids they then predict;
-- with augmentation, each round trained on every grid;
-- one model reused across rounds;
-- an orientation helper that stops rotating.
-
-*Source: `python tests/fault_injection.py`. For each fault, it confirms that the matching test passes
-on the unchanged code, then applies the fault in memory and confirms that the test fails. The runs
-are recorded in `docs/decisions.md` (26 and 28 October).*
+**The tests catch real faults.** `python tests/fault_injection.py` breaks the code on purpose, in
+memory, and confirms that the matching test fails. Stage 1's seven faults: a changed test-set seed;
+augmenting before the split; a corrupted feature; training on the grids being predicted; with
+augmentation, training on every grid; one model reused across rounds; an orientation helper that
+stops rotating. Stage 2 adds four.
 
 ## Course-repository updates
 
-`diversity_score`, which defines the graded score, resides in the course repository, so updates are
-detected but never applied automatically. One exception: if `data/cp2-repo/` is missing, the starter
-notebook's first cell downloads the course repository's latest commit; `tests/test_pin.py` then
-fails until `./setup_data.sh` restores the pin.
-- **Checking.** `./setup_data.sh --check` compares the pinned commit with the course repository's
-  latest commit, reading only. A GitHub Actions workflow runs the same check daily. However, GitHub
-  runs a scheduled workflow, and offers its manual "Run workflow" button, only when the workflow
-  file is on the `main` branch. Until then, run the check by hand.
-- **Updating.** `./setup_data.sh --update` moves to the latest course commit in one step: it checks
-  out the new data, prints the changes (flagging any change to `utils_public.py`) and rewrites
-  `course_commit.txt`. To reject an update, restore `course_commit.txt` with git and rerun
-  `./setup_data.sh`. The course repository then stays ahead of the pin, so the daily check keeps
-  failing until the update is adopted.
+The graded `diversity_score` lives in the course repository, so updates are detected but never
+applied automatically.
+- `./setup_data.sh --check` compares the pin with the course's latest commit (exit code 1: it has
+  moved). A GitHub workflow runs it daily once the workflow is on `main`.
+- `./setup_data.sh --update` adopts the latest commit and rewrites the pin, printing any change to
+  `utils_public.py` in full.
+- If `data/cp2-repo/` is missing, the starter notebook downloads the latest commit instead;
+  `tests/test_pin.py` fails until `./setup_data.sh` restores the pin.

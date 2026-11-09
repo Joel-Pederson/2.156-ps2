@@ -7,7 +7,8 @@ options within the caps below, so luck can't pick the winner. It backs the refle
 - **Entries are a record.** From 31 October they are not rewritten; a correction is a new entry.
 - **Development set only.** No entry uses test-set ratings.
 
-Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.md`](plan.md).
+Terms: [`stage1_evaluation.md`](stage1_evaluation.md) and the "Words" list in
+[`architecture.md`](architecture.md). Plan task numbers (1.3, 2.2, …): [`plan.md`](plan.md).
 
 ## At a glance
 
@@ -42,6 +43,10 @@ Terms: [`glossary.md`](glossary.md). Plan task numbers (1.3, 2.2, …): [`plan.m
 | 4 Nov | Test set opened once: every advisor at or above its expected precision | Test set result |
 | 6 Nov | Sweep rerun: Wellness 0.15 still passes; final pool made; CNN training fixed (warm-up) | Sweep rerun; CNN fix |
 | 7 Nov | Scoreboard sets the cushion (0.06, all 100 passed); annealing replaces greedy spreading | Scoreboard tries; annealing |
+| 7 Nov | The approval rule, not the search, is the limit; new models (bell-curve target, neighbourhood library, per-cell network), a deviation | The approval rule is the limit; upgraded models |
+| 8 Nov | Scoreboard confirms the new models (F: 0.7566, all 100 passed); no single advisor is the gap | Scoreboard tries F and G |
+| 8 Nov | Try F's code moved into the repo (`upgraded.py`, `anneal.py --neighbours`); reproduces F exactly | F's code moved into the repo |
+| 8 Nov | 5 networks at weight 0.5 for Wellness and Tax: held-out approvals 718 → 730 and 900 → 916 | Five networks |
 
 ## The rules in plain words
 
@@ -722,7 +727,7 @@ predictions for all four advisors: the protocol's reproduction check (28 October
   - *Likely under-trained (a hypothesis, not tested).* The lower learning rate (0.001), which was
     the edge of the searched range, was chosen in 56 of 60 rounds. 21–27% of its fits were still
     improving when they hit the 60-epoch cap. A lower rate, or more epochs, might do better. In
-    the settings chart (`docs/figures/stage2_cnn_settings.png`), learning rate has by far the
+    the settings chart ([`stage2_models.md`](stage2_models.md), Figure 2), learning rate has by far the
     largest effect: Tax mean inner hp_recall is 0.549 at 0.001 against 0.045 at 0.003.
   - *Unstable.* The approval counts vary widely between shuffles: Transportation 37 / 205 / 289,
     Tax 654 / 690 / 451.
@@ -1073,3 +1078,153 @@ the session scratchpad (not kept).
 
 *Source:* `python pilot.py` (check_mWellness0.15-…json, commit 1998697); the course scoreboard,
 7 Nov; scratch prototypes of each search, folded into `anneal.py`.
+
+### 7 November 2026 (evening): The approval rule is the limit; upgraded models (a deviation)
+
+- **Better annealing** (scratch scripts, not yet in `anneal.py`):
+  - Each update rates all 196 one-cell changes of a design, plus 196 random two-cell swaps.
+  - It picks among the approved ones with chance proportional to exp(gain / T).
+  - Score if all pass, old models:
+
+  | Moves | Cushion 0.06 | 0.05 | 0.04 |
+  |---|---|---|---|
+  | one-cell changes | 0.742 | 0.748 | 0.750 |
+  | plus swaps | — | 0.752 | 0.754 |
+
+- **The approval rule, not the search, is the limit.** Same start, same method:
+  - with no rule: 0.774;
+  - trusting the old models fully (predicted rating ≥ 0.75 for all four, with no cut-off or cushion): 0.755.
+
+  *Correction:* the second run was first called "perfect models". It is our models with no safety
+  margin, so it does not show what perfect knowledge would allow.
+- **Ratings are percentile ranks of a hidden score that takes few values** (first noticed in the
+  28 Oct plan, first acted on here).
+  - They are uniform: quartiles 0.24–0.26, 0.49–0.51 and 0.74–0.75.
+  - Each advisor has only 228–780 distinct values per 4,000 grids, and up to 27–61 grids share
+    one value.
+  - So the new models train on norm.ppf(rating), the bell-curve scale.
+- **Second formula hunt:** tied grids, a null-space search and forward selection over 600
+  neighbourhood counts found no simple formula for any advisor. Park-quality features added
+  nothing.
+- **Upgraded models** (scratch `newmodels.py`, `newmodels2.py`). Per advisor, on the bell-curve
+  scale, the mean of two models:
+  - (a) a GBM on the 75 engineered features, the 148 lab features, a new *neighbourhood library*
+    and one-hot. The library has 600 counts: pairs of districts within 1–3 cells, and cells with at
+    least k neighbours of a district.
+  - (b) ridge regression on the same inputs without one-hot, plus a GBM on its errors.
+  - Wellness and Tax also add, at weight 0.3, a per-cell network (4 convolution layers, summed over
+    cells).
+
+  Held out on development grids only (3 shuffles × 5 folds, a different fold draw from the 4 Nov
+  nested runs):
+
+  | Advisor | Old models: approved at 98% (4 Nov) | New: approved | New: Spearman | New cut-off |
+  |---|---|---|---|---|
+  | Wellness | 575 | 718 (645 without the network) | 0.967 | 0.788 |
+  | Tax | 828 | 900 (872 without) | 0.994 | 0.753 |
+  | Transportation | 770 | 867 | 0.989 | 0.778 |
+  | Business | 910 | 928 | 0.993 | 0.759 |
+
+- **Deviation:** these models came after the test set was spent.
+  - The network weight was chosen on the same held-out predictions that set the cut-offs.
+  - There was no fooling check and no final exam.
+  - The scoreboard is their only independent test (8 Nov, try F).
+
+*Source:* session scratchpad (fit_new.py, fcn_check.py, fit_new2.py, whatif_anneal.py,
+nbr_swap.py); held-out predictions in data/designs/scratch_7nov/fcn_oof_*.npz, models in
+newmodels*.pkl there.
+
+### 8 November 2026: Scoreboard tries F and G; what limits the score
+
+- **Overnight**, 100,000 updates with the new models: score if all pass 0.7566 at cushion 0.06 and
+  0.7564 at 0.04. A smaller cushion buys nothing.
+- **Cross-check:** how many of each file's 100 grids each model set fails at its bare cut-off.
+
+  | Files | Made with | Old models fail | New models fail | If all pass |
+  |---|---|---|---|---|
+  | 5 files, cushion 0.04–0.06 | old models | 0 | 0–1 | 0.742–0.754 |
+  | 6 files, cushion 0.04–0.06 | new models | 23–81, mostly Wellness | 0 | 0.755–0.757 |
+
+- **Tries:**
+
+  | Try | Grids | Cushion | If all passed | Real score | Passed |
+  |---|---|---|---|---|---|
+  | F | new models, annealed with swaps | 0.06 | 0.7566 | **0.7566** | 100 of 100 |
+  | G | approved by both: old models at 0.04, new at 0.00 | — | 0.7544 | 0.7317 | 97 of 100 |
+
+- **Lessons:**
+  - **Where old and new models disagreed, the new ones were right.** The old models would have
+    failed 62 of F's grids, and all 100 passed.
+  - **The new models need their cushion:** 3 grids failed at cushion 0 (G), none at 0.06 (F).
+    Approval by the old models did not protect G.
+  - **The failure count is exact.** Score × 49,000 is a whole number: the cells each valid grid
+    differs from its 10 nearest valid grids. No set of 1 or 2 removed grids reproduces G's score;
+    9,576 sets of 3 do. Which 3 failed is unknown.
+  - **No single advisor is the gap.** We removed one advisor's rule at a time (old models, the
+    others at 0.04; 15,000 updates from G's grids at 0.7544): Wellness 0.7555, Tax 0.7586,
+    Transportation 0.7532, Business 0.7546. Runs this short reheat and do not fully recover:
+    Transportation's ended below its start, so differences under about 0.002 are noise. Only Tax
+    shows a clear gain (+0.004), far short of the +0.015 to the leader. The four restrict the
+    score together.
+  - **Approved designs that are far apart are rare.** We repaired the 100 no-rule designs (0.774)
+    until the new models approved them at 0.06. That left 0.7016, below what annealing reaches from
+    approved designs (0.757); the repairs likely pull designs toward the same few approved regions.
+  - **Annealing from F has converged.** Two hotter restarts from F's grids (new models, cushion
+    0.06, 100,000 updates each, starting temperatures 2e-4 and 1e-4) ended at 0.7557 and 0.7560,
+    both below F's 0.7566. Each levelled off by 70,000 updates. Not submitted.
+- **Standing (8 Nov):** F is 4th on the leaderboard (1st 0.7718, 3rd 0.7608), and our best so far.
+
+*Source:* session scratchpad (nbr_new2.py, nbr_both.py, crosscount.py, which_failed.py,
+whatif_anneal.py); data/designs/scratch_7nov/crosscheck.xlsx; the course scoreboard, 8 Nov.
+
+### 8 November 2026 (afternoon): F's code moved into the repo (a deviation, continued)
+
+- **Why:** try F was made by scratch scripts outside the repo. The code zip must hold the code
+  behind the submission.
+- **What moved:**
+  - `upgraded.py`: the upgraded models. `--oof` saves held-out predictions (3 shuffles × 5
+    folds, the project's own folds); `--fit` fits on all 4,000 grids and sets each cut-off from
+    those predictions. Network weights and seeds per advisor are in `upgraded.NETWORK`.
+  - `features_lab.neighbourhood()`: the 600 neighbourhood counts.
+  - `anneal.py --neighbours --models upgraded`: the heat-bath annealing with swaps, plus the
+    repair of designs below a bar.
+- **Checks (all exact):**
+  - the neighbourhood counts equal the scratch library's on F's grids and 2,000 dataset grids;
+  - `upgraded.rate` equals the scratch models' ratings on the same 2,100 grids, using F's saved
+    models (now `data/cache/upgraded/models.pkl`);
+  - the cut-offs computed from the saved held-out predictions equal F's (Wellness 0.7882, Tax
+    0.7533, Transportation 0.7777, Business 0.7590);
+  - 200 updates of `anneal.py`'s new code from F give the same grids as the scratch script;
+  - `pytest`: 111 passed.
+- **Still a deviation:** these models were chosen after the test set was spent, on held-out
+  predictions and the scoreboard only.
+
+*Source:* checks run in the session (8 Nov); `python upgraded.py --help`, `python anneal.py --help`.
+
+### 8 November 2026 (evening): Five networks for Wellness and Tax (a deviation, continued)
+
+- **Question:** does averaging 5 per-cell networks (seeds 0–4) instead of 2 approve more grids?
+  Same 3 shuffles × 5 folds; seeds 2–4 were added to F's held-out predictions.
+- **Held-out approvals at 98% precision (per shuffle):**
+
+  | Advisor | F's setting: 2 networks, weight 0.3 | 5 networks, weight 0.5 | Truly passing |
+  |---|---|---|---|
+  | Wellness | 718.3 (714 / 727 / 714) | 729.7 (733 / 733 / 723) | 1008 |
+  | Tax | 899.7 (901 / 896 / 902) | 916.0 (918 / 914 / 916) | 948 |
+
+- **Choice: 5 networks at weight 0.5 for both** (`upgraded.NETWORK`). It beats F's setting in all
+  three shuffles for both advisors. Weights 0.3–0.6 were tried; 0.5 is within 2 approvals of
+  the best for each and not at the edge of the range, which limits the luck of picking the top.
+  New cut-offs: Wellness 0.7808 (was 0.7882), Tax 0.7468 (was 0.7533).
+- **F's grids under the new models:** all 100 stay above the bare cut-offs (lowest margins:
+  Wellness 0.037, Tax 0.053), but 17 fall below cut-off + 0.06 (13 Wellness, 5 Tax). Annealing
+  had pushed them just over the old networks' bars. `anneal.py` repairs them first (0.7566 →
+  0.7518 if all pass), then anneals.
+- **Cost:** rating a design's 392 neighbours takes 0.94 s on one core, against 0.52 s with F's
+  models, so 100,000 updates take about 4.2 h.
+- **Plan:** two runs overnight from F at cushion 0.06 (seeds 0 and 1, side by side). A result
+  goes to the scoreboard only if its score if all pass beats F's 0.7566.
+- F's models are kept as `data/cache/upgraded/models_tryF.pkl`.
+
+*Source:* `fcn_more_seeds.py` (session scratchpad; data/designs/scratch_7nov/fcn_oof5_*.npz);
+`python upgraded.py --fit`; checks in the session (8 Nov).

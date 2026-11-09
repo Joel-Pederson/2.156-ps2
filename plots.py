@@ -17,7 +17,10 @@ Stage 1 figures (numbered as in docs/stage1_evaluation.md and analysis.ipynb):
 * ``fig_scorecard(results)``    Figure 5: approval count at 98% precision, per model and advisor.
 * ``fig_pred_vs_actual(...)``   Figures 6-7: predicted vs true rating, per advisor.
 
-Stage 4 figures (docs/architecture.md):
+Stage 2 figure (docs/stage2_models.md):
+* ``fig_cnn_settings(effects)``  Figure 2: the CNN search's score at each value of each setting.
+
+Stage 4 figures (README Figures 2-3):
 * ``fig_pipeline()``              the pipeline, with the checks beside the steps they test.
 * ``fig_scoreboard(rows, best)``  each scoreboard try: real score vs score if all passed.
 
@@ -293,11 +296,11 @@ def fig_diversity_example(grids, index=12, pool=100):
         color=INK,
         va="top",
     )
-    ax.text(
-        k + 4,
-        ex["mean_all"] + 0.012,
-        f"Mean distance to all {len(x)} = {ex['mean_all']:.2f} (not used by the score)",
-        va="bottom",
+    ax.text(  # short, so it ends before the bars rise to its height
+        1,
+        0.86,
+        f"Mean of all {len(x)}: {ex['mean_all']:.2f} (not used)",
+        va="top",
         fontsize=9,
         color=INK_2,
     )
@@ -850,30 +853,29 @@ def fig_cnn_settings(effects):
 
 # --- Stage 4 -------------------------------------------------------------------------------
 
-PIPELINE = (  # (script, what it does), top to bottom
+PIPELINE = (  # (step and script, what it does), top to bottom; steps as in the README's code flow
     (
-        "Course data",
+        "1  Course data",
         "500,000 grids; 5,000 rated per advisor, 1,000 of them locked away",
     ),
-    ("features.py", "each grid → 75 numbers: district counts, neighbours, distances"),
-    ("search.py", "each advisor's model, chosen by honest nested cross-validation"),
     (
-        "surrogates.py",
-        "rate every grid; cut-off where 98% of approved grids truly pass",
+        "2  features.py, features_lab.py",
+        "each grid → 75 numbers (counts, neighbours, distances), plus 148 more",
     ),
-    ("generate.py", "edit grids cell by cell until all 4 models approve them"),
-    ("select_submission.py", "pick 100 varied designs from the pool"),
-    ("anneal.py", "spread the 100 apart; every one stays approved + cushion"),
-    ("submission .npy", "100 grids"),
+    ("3  search.py", "each advisor's model, chosen by nested cross-validation"),
+    (
+        "4  surrogates.py (final), upgraded.py (try F)",
+        "rate grids; cut-off where 98% of approved grids truly pass",
+    ),
+    ("6  generate.py", "edit grids cell by cell until all 4 models approve them"),
+    ("7  select_submission.py", "pick 100 varied designs from the pool"),
+    ("8  anneal.py", "spread the 100 apart (F: with swaps); each stays approved"),
+    ("9  Submit", "the 100 grids (.npy), by hand"),
 )
 PIPELINE_CHECKS = (  # (row of PIPELINE it checks, name, what it showed)
-    (3, "test_set.py", "final exam on the locked grids:\nprecision 0.98-0.99 (4 Nov)"),
-    (4, "pilot.py", "fooling check and CNN check:\nset the first cushion"),
-    (
-        6,
-        "scoreboard tries",
-        "real pass rate: cushion 0.06\n→ 100 of 100 passed (7 Nov)",
-    ),
+    (3, "5  test_set.py", "final exam of the final models:\nprecision 0.983-0.995 (4 Nov)"),
+    (4, "pilot.py (step 6)", "fooling check and CNN check:\nset the first cushion"),
+    (7, "scoreboard", "at cushion 0.06, 100 of 100\npassed (tries E and F)"),
 )
 
 
@@ -949,7 +951,7 @@ def fig_scoreboard(rows, best, ceiling=0.808):
     ax.set_yticks(range(len(rows)), [r["label"] for r in rows])
     ax.set_ylim(len(rows) - 0.5, -1)
     ax.set_xlim(0.6, 0.85)
-    ax.set_xlabel("Score (mean distance to the 10 nearest passing grids, /100)")
+    ax.set_xlabel("Score (higher = grids more spread out; a failed grid adds nothing)")
     ax.tick_params(axis="y", length=0)
     ax.spines["left"].set_visible(False)
     handles = [
