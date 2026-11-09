@@ -1,0 +1,25 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v2.py (fast annealer; push-apart weight fades to BETA_END)",
+  "script_sha256": "e4e74d1688197c3293edc21fcc12687f55484449df1a8d9788f538d420f852b5",
+  "start": "submissions/anneal_fade_m0.06_20261109_182314.npy (try I)",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.06,
+  "updates": 100000,
+  "T0": 5e-05,
+  "T1": 1e-06,
+  "seed": 9,
+  "lam": 0.5,
+  "beta": 2.0,
+  "beta_end": 0.0,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7670204081632653,
+ "approved_at_cushion": 0.06,
+ "assumes": "the four advisors' errors are independent",
+ "commit": "0f8f5743cae50572dfcb87b8c076ce84585de5d7",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
