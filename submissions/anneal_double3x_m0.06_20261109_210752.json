@@ -1,0 +1,31 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v3.py (fast annealer; FAST_DOUBLES adds two-cell changes)",
+  "script_sha256": "853f04cc08b6f85bca2f8111dd972fa0bf4acdba10a5f420316d5858d8e07f80",
+  "start": "submissions/anneal_double_m0.06_20261109_200655.npy (try K)",
+  "chain": [
+   "try K (0.7679)",
+   "fast_anneal_v3 FAST_DOUBLES=588, 100,000 updates seed 21 -> 0.7682",
+   "fast_anneal_v3 FAST_DOUBLES=1176, 100,000 updates seed 23 -> 0.7685"
+  ],
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.06,
+  "updates": 100000,
+  "T0": 5e-05,
+  "T1": 1e-06,
+  "seed": 23,
+  "lam": 0.5,
+  "beta": 2.0,
+  "beta_end": 0.0,
+  "doubles": 1176,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7684897959183672,
+ "approved_at_cushion": 0.06,
+ "assumes": "the four advisors' errors are independent",
+ "commit": "5734405180fb467fe7df00c503c4d1581e83026c",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
