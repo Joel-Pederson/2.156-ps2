@@ -1,0 +1,29 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v4.py via chain_t.sh (passes of 150,000 updates, each from the last)",
+  "script_sha256": "38b28b5ab0364f977cc9089919e68987648979bd5fd2f8d979de353e8c1ed34d",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.06,
+  "updates_per_pass": 150000,
+  "T0": 3e-05,
+  "T1": 1e-06,
+  "lam": 0.5,
+  "beta": 1.5,
+  "beta_end": 0.0,
+  "doubles": 1176,
+  "triples": 1176,
+  "workers": 3,
+  "repaired_at_start": 0,
+  "start": "data/designs/fast_fresh4_s30.npy (start_poolpick_new.npy, 300,000 updates v3 FAST_DOUBLES=1176 seed 30 -> 0.7680)",
+  "passes": "5 passes, seeds 34, 134, ..., 434: 0.7683, 0.7688, 0.7688, 0.7688, 0.7690"
+ },
+ "score_if_all_pass": 0.7690204081632652,
+ "approved_at_cushion": 0.06,
+ "assumes": "the four advisors' errors are independent",
+ "commit": "f8121d916c005ac0260db7ed95768272622d325f",
+ "uncommitted": [
+  ".gitignore",
+  "submissions/chain2_m0.06_20261110_044934.json",
+  "submissions/chain2_m0.06_20261110_044934.npy"
+ ]
+}
