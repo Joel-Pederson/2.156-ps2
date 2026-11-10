@@ -1,0 +1,33 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v5.py (FAST_MARGINS: one cushion per advisor)",
+  "script_sha256": "1b17c9c6ec538e912d86718a239e1be8d02330945dbe12207fff2433e1e0a7c6",
+  "start": "submissions/chain4_m0.06_20261110_044934.npy (try O)",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margins": {
+   "Wellness": 0.06,
+   "Tax": 0.04,
+   "Transportation": 0.04,
+   "Business": 0.04
+  },
+  "updates": 150000,
+  "T0": 3e-05,
+  "T1": 1e-06,
+  "seed": 44,
+  "lam": 0.5,
+  "beta": 1.5,
+  "beta_end": 0.0,
+  "doubles": 1176,
+  "triples": 1176,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7700408163265305,
+ "approved_at_cushion": "Wellness 0.06, others 0.04",
+ "held_out_risk": "expected failures 1.98 (O: 1.80); scaled by past tries about 0.65",
+ "assumes": "the four advisors' errors are independent",
+ "commit": "693492f857fa29dbfd99dab2e5f0e92c287719f3",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
