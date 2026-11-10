@@ -49,6 +49,7 @@ Terms: [`stage1_evaluation.md`](stage1_evaluation.md) and the "Words" list in
 | 8 Nov | 5 networks at weight 0.5 for Wellness and Tax: held-out approvals 718 → 730 and 900 → 916 | Five networks |
 | 9 Nov | Held-out failures by cushion back 0.06; a Tax-only cushion of 0.02 dropped | Held-out failures by cushion |
 | 9 Nov | Push-apart annealing (fast): try H 0.7644, all 100 passed, 3rd | Push-apart annealing; try H |
+| 9–10 Nov | Fading the push, then two- and three-cell changes: try I 0.7662, all 100 passed; N and O up to 0.7695 if all pass | Chains of passes; two- and three-cell changes |
 
 ## The rules in plain words
 
@@ -1303,3 +1304,29 @@ scoreboard, 9 Nov.
 *Source:* session scratchpad (orient_mix.py, norule_fast.py, norule_energy.py); fast_anneal.py and
 its runs (data/fast_*.log); the course scoreboard, 9 Nov.
 
+### 9–10 November 2026 (evening and night): Chains of passes; two- and three-cell changes
+
+- **Fading the push:** the push-apart weight falls from 2 to 0 over a pass
+  (`data/scratch_keep/scripts/fast_anneal_v2.py`). Each pass starts from the last one's output.
+- **Two- and three-cell changes:** each update also offers random edits of two or three cells at
+  once (`fast_anneal_v3.py`, `fast_anneal_v4.py`). They let a design cross a grid the models would
+  not approve, which one-cell edits and swaps cannot.
+- **Chains, cushion 0.06, score if all pass:**
+
+  | Chain | Start | Passes |
+  |---|---|---|
+  | 1 | try H (0.7644) | fade 0.7662 (I) → 0.7670 (J) → 0.7673 → two-cell 0.7675 → 0.7679, then stuck |
+  | 2 | 100 pool designs (0.6816) | fade 0.7651 → … → 0.7668 → two-cell 0.7679 (K) → 0.7685 (L) → 0.7687 → three-cell 0.7690 (M) → … → 0.7695 (N) |
+  | 3 | same pool start | two-cell from the start 0.7677 → 0.7682–0.7685, then stuck (stopped) |
+  | 4 | same pool start | two-cell from the start 0.7680 → … → 0.7690 (O) |
+
+- **What didn't help:** a second seed of I's recipe (0.7657 against 0.7662); picking the best 100
+  from about 650 approved designs of all runs (no swap beat chain 1's set); hot restarts of a
+  stuck chain (fell 0.7679 → 0.7675).
+- **Try I:** real score 0.7662244898, equal to its score if all pass, so all 100 passed again.
+  Standing (10 Nov, best per team): Shape Grapplers 0.7749, Neural Net November 0.7671, us 0.7662.
+- **N and O share no designs** (each of O's is about 30 cells from N's nearest), so a failure in
+  one says nothing about the other.
+
+*Source:* data/fast_*.log; data/scratch_keep/scripts/chain.sh and chain_t.sh; the course
+scoreboard, 10 Nov.

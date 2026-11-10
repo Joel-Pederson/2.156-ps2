@@ -109,7 +109,7 @@ def stage2():
 
 
 SCOREBOARD = os.path.join(validity.PS2_ROOT, "docs", "scoreboard.csv")
-LEADERBOARD_BEST = 0.7718  # the course leaderboard's top score, 7 Nov 2026
+LEADERBOARD_BEST = 0.7749  # the course leaderboard's top score, 10 Nov 2026
 
 
 def stage4():
