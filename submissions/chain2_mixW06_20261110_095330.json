@@ -1,0 +1,33 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v5.py via chain_mix.sh",
+  "script_sha256": "1b17c9c6ec538e912d86718a239e1be8d02330945dbe12207fff2433e1e0a7c6",
+  "start": "data/designs/fast_c2_mix.npy (try N re-annealed at the mixed cushion, 0.7701, seed 43)",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margins": {
+   "Wellness": 0.06,
+   "Tax": 0.04,
+   "Transportation": 0.04,
+   "Business": 0.04
+  },
+  "updates": 150000,
+  "T0": 3e-05,
+  "T1": 1e-06,
+  "seed": 53,
+  "lam": 0.5,
+  "beta": 1.5,
+  "beta_end": 0.0,
+  "doubles": 1176,
+  "triples": 1176,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7705714285714285,
+ "approved_at_cushion": "Wellness 0.06, others 0.04",
+ "held_out_risk": "expected failures 1.85 (N: 1.84; P: 2.23); scaled by past tries about 0.6",
+ "assumes": "the four advisors' errors are independent",
+ "commit": "aaf864763050730fb69849b0da66c4f4ba835991",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
