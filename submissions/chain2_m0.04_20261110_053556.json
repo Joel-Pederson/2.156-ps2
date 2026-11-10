@@ -1,0 +1,28 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v4.py",
+  "script_sha256": "38b28b5ab0364f977cc9089919e68987648979bd5fd2f8d979de353e8c1ed34d",
+  "start": "data/designs/fast_c2_p6.npy (= try N, 0.7695 at cushion 0.06)",
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.04,
+  "updates": 150000,
+  "T0": 3e-05,
+  "T1": 1e-06,
+  "seed": 41,
+  "lam": 0.5,
+  "beta": 1.5,
+  "beta_end": 0.0,
+  "doubles": 1176,
+  "triples": 1176,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.770816326530612,
+ "approved_at_cushion": 0.04,
+ "held_out_risk": "expected failures 2.23 (N: 1.84); scaled by past tries (3 seen / 9.0 predicted) about 0.75",
+ "assumes": "the four advisors' errors are independent",
+ "commit": "8c31f10f29adc7c85f33ca5579e90f8bcb31f447",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
