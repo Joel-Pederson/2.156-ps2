@@ -1,0 +1,34 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v3.py (fast annealer; FAST_DOUBLES adds two-cell changes)",
+  "script_sha256": "853f04cc08b6f85bca2f8111dd972fa0bf4acdba10a5f420316d5858d8e07f80",
+  "start": "data/designs/fast_fadepool8c_s17.npy",
+  "chain": [
+   "data/designs/start_poolpick_new.npy (100 pool designs, greedy max-min; 0.6816)",
+   "fast_anneal_v2 200,000 updates seed 8 -> 0.7651",
+   "fast_anneal_v2 100,000 updates seed 11 -> 0.7659",
+   "fast_anneal_v2 100,000 updates seed 14 -> 0.7666",
+   "fast_anneal_v2 100,000 updates seed 17 -> 0.7668",
+   "fast_anneal_v3 FAST_DOUBLES=196, 100,000 updates seed 19 -> 0.7679"
+  ],
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margin": 0.06,
+  "updates": 100000,
+  "T0": 5e-05,
+  "T1": 1e-06,
+  "seed": 19,
+  "lam": 0.5,
+  "beta": 2.0,
+  "beta_end": 0.0,
+  "doubles": 196,
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7679183673469387,
+ "approved_at_cushion": 0.06,
+ "assumes": "the four advisors' errors are independent",
+ "commit": "3b3b6c95c3b52537a858317aa5f61f8c33927d00",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
