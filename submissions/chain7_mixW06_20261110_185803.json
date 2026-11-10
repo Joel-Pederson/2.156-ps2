@@ -1,0 +1,52 @@
+{
+ "settings": {
+  "script": "data/scratch_keep/scripts/fast_anneal_v5.py via fresh_then_chain.sh (a fresh pass, then chain_mix.sh)",
+  "script_sha256": "1b17c9c6ec538e912d86718a239e1be8d02330945dbe12207fff2433e1e0a7c6",
+  "start": "data/designs/start_poolpick_new.npy (0.6816); independent of tries N-S",
+  "fresh_pass": {
+   "updates": 300000,
+   "T0": 5e-05,
+   "T1": 1e-06,
+   "seed": 70,
+   "lam": 0.5,
+   "beta": 2.0,
+   "beta_end": 0.0,
+   "doubles": 1176,
+   "triples": 588,
+   "result": 0.7698
+  },
+  "chain_passes": {
+   "count": 2,
+   "updates": 150000,
+   "T0": 3e-05,
+   "T1": 1e-06,
+   "seeds": [
+    71,
+    171
+   ],
+   "lam": 0.5,
+   "beta": 1.5,
+   "beta_end": 0.0,
+   "doubles": 1176,
+   "triples": 1176
+  },
+  "models": "upgraded (5 networks for Wellness and Tax)",
+  "margins": {
+   "Wellness": 0.06,
+   "Tax": 0.04,
+   "Transportation": 0.04,
+   "Business": 0.04
+  },
+  "workers": 3,
+  "repaired_at_start": 0
+ },
+ "score_if_all_pass": 0.7703265306122448,
+ "approved_at_cushion": "Wellness 0.06, others 0.04",
+ "held_out_risk": "expected failures 1.99 (R: 1.85; S: 1.96); scaled by past tries about 0.65",
+ "family": "median 30 cells from the nearest design in R and in S",
+ "assumes": "the four advisors' errors are independent",
+ "commit": "71a27e8fb877e62353f831e1b75fbd629a6a75cc",
+ "uncommitted": [
+  ".gitignore"
+ ]
+}
