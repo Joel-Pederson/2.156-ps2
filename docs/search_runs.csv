@@ -1,116 +1,116 @@
 panel,method,log,updates,score_if_all_pass
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,0,0.7518
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,10000,0.7470
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,20000,0.7503
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,30000,0.7533
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,40000,0.7555
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,50000,0.7560
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,60000,0.7561
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,70000,0.7562
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,80000,0.7563
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,90000,0.7563
-From try F's 100 grids,one-cell edits and swaps,fast_plain_seed0,100000,0.7563
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,0,0.7518
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,10000,0.7619
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,20000,0.7638
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,30000,0.7643
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,40000,0.7642
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,50000,0.7642
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,60000,0.7644
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,70000,0.7645
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,80000,0.7644
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,90000,0.7644
-From try F's 100 grids,+ pushing close pairs apart,fast_push_seed0,100000,0.7644
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,0,0.7518
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,10002,0.7613
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,20001,0.7636
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,30000,0.7643
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,40002,0.7645
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,50001,0.7645
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,60000,0.7645
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,70002,0.7645
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,80001,0.7646
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,90000,0.7646
-From try F's 100 grids,+ the push fading to zero,fast_fade2_F_s6,100002,0.7646
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,0,0.6816
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,10002,0.7592
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,20001,0.7622
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,30000,0.7635
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,40002,0.7643
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,50001,0.7645
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,60000,0.7646
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,70002,0.7647
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,80001,0.7648
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,90000,0.7649
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,100002,0.7650
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,110001,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,120000,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,130002,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,140001,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,150000,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,160002,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,170001,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,180000,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,190002,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fade2_pool_s8,200001,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,210003,0.7643
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,220002,0.7647
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,230001,0.7654
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,240003,0.7656
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,250002,0.7658
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,260001,0.7658
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,270003,0.7658
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,280002,0.7658
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,290001,0.7658
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8_s11,300003,0.7659
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,310005,0.7651
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,320004,0.7660
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,330003,0.7662
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,340005,0.7665
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,350004,0.7665
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,360003,0.7665
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,370005,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,380004,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,390003,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8b_s14,400005,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,410007,0.7657
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,420006,0.7665
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,430005,0.7664
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,440007,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,450006,0.7665
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,460005,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,470007,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,480006,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,490005,0.7666
-From 100 varied approved designs,+ the push fading to zero,fast_fadepool8c_s17,500007,0.7668
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,0,0.6816
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,10002,0.7599
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,20001,0.7633
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,30000,0.7650
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,40002,0.7660
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,50001,0.7670
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,60000,0.7672
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,70002,0.7675
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,80001,0.7673
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,90000,0.7676
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,100002,0.7675
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,110001,0.7677
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,120000,0.7677
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,130002,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,140001,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,150000,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,160002,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,170001,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,180000,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,190002,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,200001,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,210000,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,220002,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,230001,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,240000,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,250002,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,260001,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,270000,0.7678
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,280002,0.7679
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,290001,0.7680
-From 100 varied approved designs,+ two-cell changes,fast_fresh4_s30,300000,0.7680
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,10000,0.7470
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,20000,0.7503
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,30000,0.7533
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,40000,0.7555
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,50000,0.7560
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,60000,0.7561
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,70000,0.7562
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,80000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,90000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,100000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,10000,0.7619
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,20000,0.7638
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,30000,0.7643
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,40000,0.7642
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,50000,0.7642
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,60000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,70000,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,80000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,90000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,100000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,10002,0.7613
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,20001,0.7636
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,30000,0.7643
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,40002,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,50001,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,60000,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,70002,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,80001,0.7646
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,90000,0.7646
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,100002,0.7646
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,0,0.6816
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,10002,0.7592
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,20001,0.7622
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,30000,0.7635
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,40002,0.7643
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,50001,0.7645
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,60000,0.7646
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,70002,0.7647
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,80001,0.7648
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,90000,0.7649
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,100002,0.7650
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,110001,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,120000,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,130002,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,140001,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,150000,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,160002,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,170001,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,180000,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,190002,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,200001,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,210003,0.7643
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,220002,0.7647
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,230001,0.7654
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,240003,0.7656
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,250002,0.7658
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,260001,0.7658
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,270003,0.7658
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,280002,0.7658
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,290001,0.7658
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,300003,0.7659
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,310005,0.7651
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,320004,0.7660
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,330003,0.7662
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,340005,0.7665
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,350004,0.7665
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,360003,0.7665
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,370005,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,380004,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,390003,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,400005,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,410007,0.7657
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,420006,0.7665
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,430005,0.7664
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,440007,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,450006,0.7665
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,460005,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,470007,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,480006,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,490005,0.7666
+From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,500007,0.7668
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,0,0.6816
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,10002,0.7599
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,20001,0.7633
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,30000,0.7650
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,40002,0.7660
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,50001,0.7670
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,60000,0.7672
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,70002,0.7675
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,80001,0.7673
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,90000,0.7676
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,100002,0.7675
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,110001,0.7677
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,120000,0.7677
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,130002,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,140001,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,150000,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,160002,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,170001,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,180000,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,190002,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,200001,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,210000,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,220002,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,230001,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,240000,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,250002,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,260001,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,270000,0.7678
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,280002,0.7679
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,290001,0.7680
+From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,300000,0.7680

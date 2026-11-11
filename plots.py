@@ -1050,7 +1050,7 @@ def fig_search(runs, ceilings):
     for ax, panel in zip(axes, panels):
         mine = [r for r in runs if r["panel"] == panel]
         x_end = max(r["updates"][-1] for r in mine) / 1000
-        tops = _spread([r["score"][-1] for r in mine], 0.0013)
+        tops = _spread([r["score"][-1] for r in mine], 0.0024)
         for r, top in zip(mine, tops):
             colour = SERIES[methods.index(r["method"])]
             x = np.array(r["updates"]) / 1000
