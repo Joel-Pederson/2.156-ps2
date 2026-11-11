@@ -49,7 +49,6 @@ from scipy.stats import norm
 
 import plots
 import search
-import upgraded
 import validity
 
 FIG_DIR = os.path.join(validity.PS2_ROOT, "docs", "figures")
@@ -153,6 +152,8 @@ def _search_runs():
 
 def _upgraded_held_out(advisor):
     """(probit-scale predictions (3 shuffles, n), true ratings) of the upgraded models."""
+    import upgraded  # here, not at the top: it needs PyTorch, which CI doesn't install
+
     o = np.load(os.path.join(upgraded.DIR, f"oof_{advisor}.npz"))
     w = upgraded.NETWORK.get(advisor, (0.0, 0))[0]
     return (1 - w) * o["gb"] + w * o["fc"], o["y"]
@@ -161,6 +162,8 @@ def _upgraded_held_out(advisor):
 def report():
     """The report's model comparison, failure bands (held out, development ratings only) and
     search methods."""
+    import upgraded  # needs PyTorch; see _upgraded_held_out
+
     grids, dev = validity.load_dev()
     stage1 = validity.scorecard(["gbm_onehot"], verbose=False)["gbm_onehot"]
     recipes = {  # labels for readers who don't know the project's stages
