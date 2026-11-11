@@ -15,6 +15,7 @@ reads   the course data (via validity.load_dev(); dev labels only, never the loc
         data/cache/nested/      Stage 2's CNN run records, via search.load_outer()
         docs/scoreboard.csv     every scoreboard try (Stage 4)
         data/cache/upgraded/    the upgraded models' held-out predictions (report figures)
+        docs/search_runs.csv    the search comparison's progress, copied from data/fast_*.log
 writes  docs/figures/*.png      (tracked in git, because the documentation shows them)
 
 How to run
@@ -23,7 +24,7 @@ How to run
     python make_figures.py --stage 1     # one stage only (0 = the README's own figures)
     python make_figures.py --stage 2     # the CNN settings chart, and the numbers behind it
     python make_figures.py --stage 4     # the pipeline and the scoreboard tries
-    python make_figures.py --stage 5     # the report's model comparison and failure bands
+    python make_figures.py --stage 5     # the report's models, failure bands and search methods
 
 Surprises
 ---------
@@ -127,6 +128,29 @@ def stage4():
 
 
 BANDS = ((0.0, 0.02), (0.02, 0.04), (0.04, 0.06), (0.06, 0.10))  # above the cut-off
+CUSHIONS = {"Wellness": 0.06, "Tax": 0.04, "Transportation": 0.04, "Business": 0.04}  # tries R, T
+SEARCH_RUNS = os.path.join(validity.PS2_ROOT, "docs", "search_runs.csv")
+NO_RULE = {  # decisions.md, 9 Nov (morning, continued): from F, distances only
+    "our search, no approval rule": 0.7766,
+    "grids built from a code, no approval rule": 0.7837,
+}
+
+
+def _search_runs():
+    """docs/search_runs.csv as one run per (panel, method), with the updates where each
+    chained pass ended."""
+    runs = {}
+    with open(SEARCH_RUNS) as f:
+        for r in csv.DictReader(f):
+            run = runs.setdefault((r["panel"], r["method"]), {
+                "panel": r["panel"], "method": r["method"], "updates": [], "score": [], "logs": []})
+            run["updates"].append(int(r["updates"]))
+            run["score"].append(float(r["score_if_all_pass"]))
+            run["logs"].append(r["log"])
+    for run in runs.values():
+        logs = run.pop("logs")
+        run["ends"] = [u for u, a, b in zip(run["updates"], logs, logs[1:] + [None]) if a != b]
+    return list(runs.values())
 
 
 def _upgraded_held_out(advisor):
@@ -137,7 +161,8 @@ def _upgraded_held_out(advisor):
 
 
 def report():
-    """The report's model comparison and failure bands (held out, development ratings only)."""
+    """The report's model comparison, failure bands (held out, development ratings only) and
+    search methods."""
     grids, dev = validity.load_dev()
     stage1 = validity.scorecard(["gbm_onehot"], verbose=False)["gbm_onehot"]
     recipes = {  # labels for readers who don't know the project's stages
@@ -170,7 +195,8 @@ def report():
     for a, s in shares.items():
         print(f"  {a} failing by band: " + ", ".join(f"{100 * v:.1f}%" for v in s.values()))
     _save(plots.fig_model_approvals(rows, passing), "report_models.png")
-    _save(plots.fig_failure_bands(shares), "report_cushion.png")
+    _save(plots.fig_failure_bands(shares, CUSHIONS), "report_cushion.png")
+    _save(plots.fig_search(_search_runs(), NO_RULE), "report_search.png")
 
 
 STAGES = {0: readme, 1: stage1, 2: stage2, 4: stage4, 5: report}  # 0 = the README's own figures

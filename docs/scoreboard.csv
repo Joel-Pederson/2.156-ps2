@@ -7,6 +7,6 @@ date,try,method,cushion,file,variety_if_all_pass,score
 2026-11-08,G,old and new models both approve,old 0.04 / new 0.00,submissions/probe_both_o04n00_20261108_030358.npy,0.7543673469,0.7317346939
 2026-11-09,H,new models + push-apart annealing (fast),0.06,submissions/anneal_push_m0.06_20261109_081750.npy,0.7644081633,0.7644081633
 2026-11-09,I,fading push-apart from H,0.06,submissions/anneal_fade_m0.06_20261109_182314.npy,0.7662244898,0.7662244898
-2026-11-10,R,N's chain re-annealed at a per-advisor cushion,Wellness 0.06 / others 0.04,submissions/chain2_mixW06_20261110_095330.npy,0.7705714286,0.7705714286
-2026-11-10,S,fresh chain 5 (independent of N-R),Wellness 0.06 / others 0.04,submissions/chain5_mixW06_20261110_132136.npy,0.7701632653,0.7548979592
-2026-11-10,T,fresh chain 7 (independent of N-S),Wellness 0.06 / others 0.04,submissions/chain7_mixW06_20261110_185803.npy,0.7703265306,0.7703265306
+2026-11-10,R,chained passes with 2- and 3-cell changes,0.06 Wellness / 0.04 rest,submissions/chain2_mixW06_20261110_095330.npy,0.7705714286,0.7705714286
+2026-11-10,S,"the same, a fresh chain",0.06 Wellness / 0.04 rest,submissions/chain5_mixW06_20261110_132136.npy,0.7701632653,0.7548979592
+2026-11-10,T,"the same, another fresh chain",0.06 Wellness / 0.04 rest,submissions/chain7_mixW06_20261110_185803.npy,0.7703265306,0.7703265306

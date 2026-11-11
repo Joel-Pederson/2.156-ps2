@@ -26,7 +26,8 @@ Stage 4 figures (README Figures 2-3):
 
 Report figures (make_figures.py --stage 5):
 * ``fig_model_approvals(rows, passing)``  approvals at 98% precision, model by model.
-* ``fig_failure_bands(shares)``           held-out failures by distance above the cut-off.
+* ``fig_failure_bands(shares, cushions)`` held-out failures by distance above the cut-off.
+* ``fig_search(runs, ceilings)``           search methods from the same start, as annealing goes on.
 
 Every figure carries labels only. Titles and descriptions are captions placed below the figure
 (stage documents in docs/, analysis.ipynb), following standard practice for documents.
@@ -55,6 +56,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import to_rgba
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 
@@ -999,9 +1001,10 @@ def fig_model_approvals(rows, passing):
     return fig
 
 
-def fig_failure_bands(shares, cushion=0.06):
+def fig_failure_bands(shares, cushions):
     """Share of held-out grids that truly fail, by how far the model put them above its
-    cut-off (shares: {advisor: {(lo, hi): share}}), with the cushion we used marked."""
+    cut-off (shares: {advisor: {(lo, hi): share}}). Bars below an advisor's cushion
+    (cushions: {advisor: margin}) are pale: no submitted design sat there."""
     advisors = list(shares)
     bands = list(next(iter(shares.values())))
     fig, ax = plt.subplots(figsize=(8, 3.4))
@@ -1009,18 +1012,67 @@ def fig_failure_bands(shares, cushion=0.06):
     for k, adv in enumerate(advisors):
         x = np.arange(len(bands)) + (k - (len(advisors) - 1) / 2) * width
         vals = [100 * shares[adv][b] for b in bands]
-        ax.bar(x, vals, width, color=SERIES[k], edgecolor=SURFACE, linewidth=2, label=adv)
+        alpha = [1 if lo >= cushions[adv] - 1e-9 else 0.3 for lo, _ in bands]
+        ax.bar(x, vals, width, color=[to_rgba(SERIES[k], a) for a in alpha],
+               edgecolor=SURFACE, linewidth=2)
         for xi, v in zip(x, vals):
             ax.text(xi, v + 0.4, f"{v:.0f}" if v >= 10 else f"{v:.1f}", ha="center",
                     va="bottom", fontsize=7.5)
-    edge = next(i for i, (lo, _) in enumerate(bands) if lo >= cushion) - 0.5
-    ax.axvline(edge, color=INK_2, lw=1, ls="--")
-    ax.text(edge + 0.05, ax.get_ylim()[1] * 0.92, f"our cushion, {cushion}: above this line",
-            fontsize=8.5, color=INK_2)
     ax.set_xticks(range(len(bands)), [f"{lo:.2f}–{hi:.2f}" for lo, hi in bands])
     ax.set_xlabel("How far the model put the grid above its approval cut-off")
     ax.set_ylabel("Held-out grids that truly fail (%)")
     ax.grid(axis="y")
     ax.set_axisbelow(True)
-    ax.legend(fontsize=8.5, ncol=len(advisors), loc="upper center", bbox_to_anchor=(0.5, 1.12))
+    handles = [Patch(color=SERIES[k], label=f"{a} (cushion {cushions[a]:.2f})")
+               for k, a in enumerate(advisors)]
+    handles.append(Patch(color=INK_2, alpha=0.3, label="below that advisor's cushion"))
+    ax.legend(handles=handles, fontsize=8.5, loc="upper right")
+    return fig
+
+
+def _spread(values, gap):
+    """Label heights for line ends: the values, nudged apart so no two are closer than gap."""
+    order = np.argsort(values)
+    out = np.array(values, float)
+    for prev, i in zip(order, order[1:]):
+        out[i] = max(out[i], out[prev] + gap)
+    return out
+
+
+def fig_search(runs, ceilings):
+    """Score if all pass as annealing goes on, for search methods run from the same start,
+    models and cushion (runs: [{panel, method, updates, score, ends}], ends = where each
+    chained pass finished). Colour follows the method; dashed lines mark scores reached with
+    no approval rule (ceilings: {label: score})."""
+    panels = list(dict.fromkeys(r["panel"] for r in runs))
+    methods = list(dict.fromkeys(r["method"] for r in runs))
+    fig, axes = plt.subplots(1, len(panels), figsize=(10, 3.8), sharey=True)
+    for ax, panel in zip(axes, panels):
+        mine = [r for r in runs if r["panel"] == panel]
+        x_end = max(r["updates"][-1] for r in mine) / 1000
+        tops = _spread([r["score"][-1] for r in mine], 0.0013)
+        for r, top in zip(mine, tops):
+            colour = SERIES[methods.index(r["method"])]
+            x = np.array(r["updates"]) / 1000
+            ax.plot(x, r["score"], color=colour, lw=2)
+            ends = [r["updates"].index(u) for u in r["ends"]]
+            ax.scatter(x[ends], np.array(r["score"])[ends], s=40, color=colour, ec=SURFACE,
+                       lw=2, zorder=3)
+            ax.text(x[-1] + 0.03 * x_end, top, f"{r['score'][-1]:.4f}", va="center",
+                    fontsize=8.5)
+        for label, y in ceilings.items():
+            ax.axhline(y, color=INK_2, lw=1, ls="--", zorder=0)
+            ax.text(0, y + 0.0007, f"{label}: {y:.3f}", fontsize=8, color=INK_2)
+        ax.set_title(panel, fontsize=10)
+        ax.set_xlim(0, x_end * 1.15)
+        ax.set_xlabel("Annealing updates (thousands)")
+        ax.grid(axis="y")
+        ax.set_axisbelow(True)
+    axes[0].set_ylim(0.745, 0.79)
+    axes[0].set_ylabel("Score if all 100 pass")
+    handles = [Line2D([], [], color=SERIES[k], lw=2, label=m) for k, m in enumerate(methods)]
+    handles.append(Line2D([], [], marker="o", ls="", color=INK_2, label="end of a pass"))
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles), fontsize=9,
+               bbox_to_anchor=(0.5, -0.06))
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     return fig
