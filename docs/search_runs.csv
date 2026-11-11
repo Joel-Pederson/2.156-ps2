@@ -1,116 +1,297 @@
-panel,method,log,updates,score_if_all_pass
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0,0.7518
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,10000,0.7470
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,20000,0.7503
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,30000,0.7533
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,40000,0.7555
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,50000,0.7560
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,60000,0.7561
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,70000,0.7562
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,80000,0.7563
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,90000,0.7563
-From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,100000,0.7563
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0,0.7518
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,10000,0.7619
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,20000,0.7638
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,30000,0.7643
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,40000,0.7642
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,50000,0.7642
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,60000,0.7644
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,70000,0.7645
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,80000,0.7644
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,90000,0.7644
-From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,100000,0.7644
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0,0.7518
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,10002,0.7613
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,20001,0.7636
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,30000,0.7643
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,40002,0.7645
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,50001,0.7645
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,60000,0.7645
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,70002,0.7645
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,80001,0.7646
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,90000,0.7646
-From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,100002,0.7646
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,0,0.6816
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,10002,0.7592
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,20001,0.7622
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,30000,0.7635
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,40002,0.7643
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,50001,0.7645
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,60000,0.7646
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,70002,0.7647
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,80001,0.7648
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,90000,0.7649
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,100002,0.7650
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,110001,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,120000,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,130002,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,140001,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,150000,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,160002,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,170001,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,180000,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,190002,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fade2_pool_s8,200001,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,210003,0.7643
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,220002,0.7647
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,230001,0.7654
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,240003,0.7656
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,250002,0.7658
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,260001,0.7658
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,270003,0.7658
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,280002,0.7658
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,290001,0.7658
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8_s11,300003,0.7659
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,310005,0.7651
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,320004,0.7660
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,330003,0.7662
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,340005,0.7665
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,350004,0.7665
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,360003,0.7665
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,370005,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,380004,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,390003,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8b_s14,400005,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,410007,0.7657
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,420006,0.7665
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,430005,0.7664
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,440007,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,450006,0.7665
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,460005,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,470007,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,480006,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,490005,0.7666
-From 100 varied designs picked from the pool,+ the push fading to zero,fast_fadepool8c_s17,500007,0.7668
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,0,0.6816
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,10002,0.7599
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,20001,0.7633
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,30000,0.7650
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,40002,0.7660
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,50001,0.7670
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,60000,0.7672
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,70002,0.7675
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,80001,0.7673
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,90000,0.7676
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,100002,0.7675
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,110001,0.7677
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,120000,0.7677
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,130002,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,140001,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,150000,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,160002,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,170001,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,180000,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,190002,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,200001,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,210000,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,220002,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,230001,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,240000,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,250002,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,260001,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,270000,0.7678
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,280002,0.7679
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,290001,0.7680
-From 100 varied designs picked from the pool,+ two-cell changes,fast_fresh4_s30,300000,0.7680
+panel,method,log,cushion,updates,score_if_all_pass
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,10000,0.7470
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,20000,0.7503
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,30000,0.7533
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,40000,0.7555
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,50000,0.7560
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,60000,0.7561
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,70000,0.7562
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,80000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,90000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),heat-bath annealing with swaps,fast_plain_seed0,0.06,100000,0.7563
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,10000,0.7619
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,20000,0.7638
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,30000,0.7643
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,40000,0.7642
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,50000,0.7642
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,60000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,70000,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,80000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,90000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ pushing close pairs apart,fast_push_seed0,0.06,100000,0.7644
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,0,0.7518
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,10002,0.7613
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,20001,0.7636
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,30000,0.7643
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,40002,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,50001,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,60000,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,70002,0.7645
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,80001,0.7646
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,90000,0.7646
+From the heat-bath annealing designs (Table 1 row 3),+ the push fading to zero,fast_fade2_F_s6,0.06,100002,0.7646
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,0,0.6816
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,10002,0.7592
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,20001,0.7622
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,30000,0.7635
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,40002,0.7643
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,50001,0.7645
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,60000,0.7646
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,70002,0.7647
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,80001,0.7648
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,90000,0.7649
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,100002,0.7650
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,110001,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,120000,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,130002,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,140001,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,150000,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,160002,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,170001,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,180000,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,190002,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fade2_pool_s8,0.06,200001,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,200001,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,210003,0.7643
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,220002,0.7647
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,230001,0.7654
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,240003,0.7656
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,250002,0.7658
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,260001,0.7658
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,270003,0.7658
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,280002,0.7658
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,290001,0.7658
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8_s11,0.06,300003,0.7659
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,300003,0.7659
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,310005,0.7651
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,320004,0.7660
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,330003,0.7662
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,340005,0.7665
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,350004,0.7665
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,360003,0.7665
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,370005,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,380004,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,390003,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8b_s14,0.06,400005,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,400005,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,410007,0.7657
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,420006,0.7665
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,430005,0.7664
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,440007,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,450006,0.7665
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,460005,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,470007,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,480006,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,490005,0.7666
+The best set's full history (Table 1 last row),+ the push fading to zero,fast_fadepool8c_s17,0.06,500007,0.7668
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,500007,0.7668
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,510009,0.7655
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,520008,0.7667
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,530007,0.7671
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,540009,0.7675
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,550008,0.7676
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,560007,0.7676
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,570009,0.7678
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,580008,0.7679
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,590007,0.7679
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl_pool_s19,0.06,600009,0.7679
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,600009,0.7679
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,610011,0.7677
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,620010,0.7676
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,630009,0.7681
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,640011,0.7680
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,650010,0.7681
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,660009,0.7681
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,670011,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,680010,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,690009,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl4_pool_s21,0.06,700011,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,700011,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,710013,0.7673
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,720012,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,730011,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,740013,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,750012,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,760011,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,770013,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,780012,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,790011,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6_pool_s23,0.06,800013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,800013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,810015,0.7683
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,820014,0.7680
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,830013,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,840015,0.7683
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,850014,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,860013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,870015,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,880014,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,890013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,900015,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,910014,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,920013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,930015,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,940014,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6b_pool_s26,0.06,950013,0.7687
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,950013,0.7687
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,960015,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,970014,0.7682
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,980013,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,990015,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1000014,0.7684
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1010013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1020015,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1030014,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1040013,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1050015,0.7685
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1060014,0.7686
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1070013,0.7686
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1080015,0.7686
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1090014,0.7686
+The best set's full history (Table 1 last row),+ two-cell changes,fast_dbl6c_pool_s29,0.06,1100013,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1100013,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1110015,0.7684
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1120014,0.7685
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1130013,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1140015,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1150014,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1160013,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1170015,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1180014,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1190013,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1200015,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1210014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1220013,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1230015,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1240014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_tri_pool_s31,0.06,1250013,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1250013,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1260015,0.7685
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1270014,0.7686
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1280013,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1290015,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1300014,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1310013,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1320015,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1330014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1340013,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1350015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1360014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1370013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1380015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1390014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p1,0.06,1400013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1400013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1410015,0.7687
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1420014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1430013,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1440015,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1450014,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1460013,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1470015,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1480014,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1490013,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1500015,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1510014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1520013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1530015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1540014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p2,0.06,1550013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1550013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1560015,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1570014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1580013,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1590015,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1600014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1610013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1620015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1630014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1640013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1650015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1660014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1670013,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1680015,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1690014,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p3,0.06,1700013,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1700013,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1710015,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1720014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1730013,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1740015,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1750014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1760013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1770015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1780014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1790013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1800015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1810014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1820013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1830015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1840014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p4,0.06,1850013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1850013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1860015,0.7686
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1870014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1880013,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1890015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1900014,0.7691
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1910013,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1920015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1930014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1940013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1950015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1960014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1970013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1980015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,1990014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p5,0.06,2000013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2000013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2010015,0.7689
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2020014,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2030013,0.7690
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2040015,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2050014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2060013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2070015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2080014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2090013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2100015,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2110014,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2120013,0.7693
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2130015,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2140014,0.7695
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_p6,0.06,2150013,0.7695
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2150013,0.7695
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2160015,0.7685
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2170014,0.7692
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2180013,0.7696
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2190015,0.7698
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2200014,0.7698
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2210013,0.7698
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2220015,0.7698
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2230014,0.7698
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2240013,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2250015,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2260014,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2270013,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2280015,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2290014,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2_mix,0.06 Wellness / 0.04 rest,2300013,0.7701
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2300013,0.7701
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2310015,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2320014,0.7694
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2330013,0.7699
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2340015,0.7701
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2350014,0.7701
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2360013,0.7702
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2370015,0.7703
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2380014,0.7703
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2390013,0.7704
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2400015,0.7704
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2410014,0.7704
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2420013,0.7704
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2430015,0.7705
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2440014,0.7706
+The best set's full history (Table 1 last row),+ three-cell changes,fast_c2m_p1,0.06 Wellness / 0.04 rest,2450013,0.7706

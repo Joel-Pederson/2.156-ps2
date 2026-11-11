@@ -133,13 +133,15 @@ SEARCH_RUNS = os.path.join(validity.PS2_ROOT, "docs", "search_runs.csv")
 
 
 def _search_runs():
-    """docs/search_runs.csv as one run per (panel, method), with the updates where each
-    chained pass ended."""
+    """docs/search_runs.csv as one run per (panel, method, cushion), in file order, with the
+    updates where each chained pass ended."""
     runs = {}
     with open(SEARCH_RUNS) as f:
         for r in csv.DictReader(f):
-            run = runs.setdefault((r["panel"], r["method"]), {
-                "panel": r["panel"], "method": r["method"], "updates": [], "score": [], "logs": []})
+            key = (r["panel"], r["method"], r["cushion"])
+            run = runs.setdefault(key, {"panel": r["panel"], "method": r["method"],
+                                        "cushion": r["cushion"], "updates": [], "score": [],
+                                        "logs": []})
             run["updates"].append(int(r["updates"]))
             run["score"].append(float(r["score_if_all_pass"]))
             run["logs"].append(r["log"])

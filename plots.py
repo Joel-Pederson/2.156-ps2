@@ -1041,25 +1041,36 @@ def _spread(values, gap):
 
 
 def fig_search(runs):
-    """Score if all pass as annealing goes on, for search methods run from the same start,
-    models and cushion (runs: [{panel, method, updates, score, ends}], ends = where each
-    chained pass finished). Colour follows the method."""
+    """Score if all pass as annealing goes on (runs: [{panel, method, cushion, updates, score,
+    ends}], ends = where each chained pass finished). Colour follows the method. A run that
+    starts where another ends continues it; a dashed line marks where the cushion changed."""
     panels = list(dict.fromkeys(r["panel"] for r in runs))
     methods = list(dict.fromkeys(r["method"] for r in runs))
     fig, axes = plt.subplots(1, len(panels), figsize=(10, 3.8), sharey=True)
     for ax, panel in zip(axes, panels):
         mine = [r for r in runs if r["panel"] == panel]
         x_end = max(r["updates"][-1] for r in mine) / 1000
-        tops = _spread([r["score"][-1] for r in mine], 0.0015)
-        for r, top in zip(mine, tops):
+        after = {r["updates"][0]: r for r in mine if r["updates"][0] > 0}  # continuations
+        last = [r for r in mine if r["updates"][-1] not in after]
+        tops = dict(zip(map(id, last), _spread([r["score"][-1] for r in last], 0.0015)))
+        for r in mine:
             colour = SERIES[methods.index(r["method"])]
             x = np.array(r["updates"]) / 1000
             ax.plot(x, r["score"], color=colour, lw=2)
             ends = [r["updates"].index(u) for u in r["ends"]]
-            ax.scatter(x[ends], np.array(r["score"])[ends], s=40, color=colour, ec=SURFACE,
-                       lw=2, zorder=3)
-            ax.text(x[-1] + 0.03 * x_end, top, f"{r['score'][-1]:.4f}", va="center",
-                    fontsize=8.5)
+            ax.scatter(x[ends], np.array(r["score"])[ends], s=30, color=colour, ec=SURFACE,
+                       lw=1.5, zorder=3)
+            nxt = after.get(r["updates"][-1])
+            if nxt is None:  # the end of a line: its score to the right
+                ax.text(x[-1] + 0.03 * x_end, tops[id(r)], f"{r['score'][-1]:.4f}",
+                        va="center", fontsize=8.5)
+            else:  # the line goes on: its score so far, above the join
+                ax.text(x[-1] - 0.01 * x_end, r["score"][-1] + 0.0012, f"{r['score'][-1]:.4f}",
+                        ha="right", va="bottom", fontsize=8)
+                if nxt["cushion"] != r["cushion"]:
+                    ax.axvline(x[-1], color=INK_2, lw=1, ls="--", zorder=0)
+                    ax.text(x[-1] - 0.02 * x_end, 0.7465, f"cushion {nxt['cushion']} \u2192",
+                            ha="right", fontsize=8, color=INK_2)
         ax.set_title(panel, fontsize=10)
         ax.set_xlim(0, x_end * 1.15)
         ax.set_xlabel("Annealing updates (thousands)")
@@ -1069,7 +1080,7 @@ def fig_search(runs):
     axes[0].set_ylabel("Score if all 100 pass")
     handles = [Line2D([], [], color=SERIES[k], lw=2, label=m) for k, m in enumerate(methods)]
     handles.append(Line2D([], [], marker="o", ls="", color=INK_2, label="end of a pass"))
-    fig.legend(handles=handles, loc="lower center", ncol=len(handles), fontsize=9,
-               bbox_to_anchor=(0.5, -0.06))
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=9,
+               bbox_to_anchor=(0.5, -0.07))
+    fig.tight_layout(rect=(0, 0.09, 1, 1))
     return fig
