@@ -50,6 +50,7 @@ Terms: [`stage1_evaluation.md`](stage1_evaluation.md) and the "Words" list in
 | 9 Nov | Held-out failures by cushion back 0.06; a Tax-only cushion of 0.02 dropped | Held-out failures by cushion |
 | 9 Nov | Push-apart annealing (fast): try H 0.7644, all 100 passed, 3rd | Push-apart annealing; try H |
 | 9–10 Nov | Fading the push, then two- and three-cell changes: try I 0.7662, all 100 passed; N and O up to 0.7695 if all pass | Chains of passes; two- and three-cell changes |
+| 10 Nov | A cushion per advisor (Wellness 0.06, others 0.04): R 0.7706 and T 0.7703, all 100 passed; S lost 2 | A cushion per advisor; tries R, S and T |
 
 ## The rules in plain words
 
@@ -1330,3 +1331,40 @@ its runs (data/fast_*.log); the course scoreboard, 9 Nov.
 
 *Source:* data/fast_*.log; data/scratch_keep/scripts/chain.sh and chain_t.sh; the course
 scoreboard, 10 Nov.
+
+### 10 November 2026: A cushion per advisor; tries R, S and T
+
+- **Cushion against score** (N's chain re-annealed, score if all pass): 0.08 → 0.7641; 0.06 →
+  0.7695; Wellness 0.06 with 0.04 for the others → 0.7706; 0.04 → 0.7708.
+- **Why Wellness keeps 0.06:** expected failures (held-out estimate, `risk.py`) for N's chain:
+
+  | Cushion | Wellness | Tax | Transportation | Business | All |
+  |---|---|---|---|---|---|
+  | 0.06 (N) | 0.56 | 0.63 | 0.08 | 0.58 | 1.84 |
+  | 0.04 (P) | 1.06 | 0.51 | 0.16 | 0.52 | 2.23 |
+  | Wellness 0.06, others 0.04 (R) | 0.50 | 0.60 | 0.18 | 0.58 | 1.85 |
+
+  R has N's risk and 0.0011 more score.
+- **Fresh chains** (`fast_anneal_v5.py`, `FAST_MARGINS`): three new chains from the pool start
+  (0.6816) reach 0.7695–0.7698 in one 300,000-update pass and 0.7702–0.7711 by 20:00. Later passes
+  push designs toward the cut-offs: chain 6 went 0.7702 → 0.7705 while expected failures rose
+  1.97 → 2.20. So the tries took each chain's lowest-risk file at 0.7700 or more, not its highest.
+- **Families:** R (N's chain), S (chain 5) and T (chain 7) share no designs; each design is about
+  30 cells from the nearest in the others.
+- **Tries:**
+
+  | Try | Score if all pass | Real score | Failed | Expected failures |
+  |---|---|---|---|---|
+  | R | 0.7706 | 0.7705714286 | 0 | 1.85 |
+  | S | 0.7702 | 0.7548979592 | 2 | 1.96 |
+  | T | 0.7703 | 0.7703265306 | 0 | 1.99 |
+
+  S's count is exact: removing 2 designs gives its real score (942 pairs fit), 1 or 3 cannot.
+  Which two failed can't be told.
+- **Risk estimate against the board:** R, S and T predicted 5.8 failures; 2 happened. With F–I,
+  14.8 predicted, 5 happened: the estimate runs about 3 times too high, as before.
+- **Board** (11 Nov): Shape Grapplers 0.7749 and 0.7718, then R and T, then Neural Net November
+  0.7671. N and O are not in the visible part.
+
+*Source:* data/fast_c*.log; the scratchpad scripts `risk.py` and `which_failed.py`; the course
+scoreboard, 11 Nov.
