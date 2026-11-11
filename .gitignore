@@ -32,3 +32,4 @@ wandb/
 *.h5
 *.npz
 Pederson CP2 Report.pages
+docs/Pederson CP2 Report.pdf
