@@ -27,7 +27,7 @@ Stage 4 figures (README Figures 2-3):
 Report figures (make_figures.py --stage 5):
 * ``fig_model_approvals(rows, passing)``  approvals at 98% precision, model by model.
 * ``fig_failure_bands(shares, cushions)`` held-out failures by distance above the cut-off.
-* ``fig_search(runs, ceilings)``           search methods from the same start, as annealing goes on.
+* ``fig_search(runs)``                     search methods from the same start, as annealing goes on.
 
 Every figure carries labels only. Titles and descriptions are captions placed below the figure
 (stage documents in docs/, analysis.ipynb), following standard practice for documents.
@@ -1039,18 +1039,17 @@ def _spread(values, gap):
     return out
 
 
-def fig_search(runs, ceilings):
+def fig_search(runs):
     """Score if all pass as annealing goes on, for search methods run from the same start,
     models and cushion (runs: [{panel, method, updates, score, ends}], ends = where each
-    chained pass finished). Colour follows the method; dashed lines mark scores reached with
-    no approval rule (ceilings: {label: score})."""
+    chained pass finished). Colour follows the method."""
     panels = list(dict.fromkeys(r["panel"] for r in runs))
     methods = list(dict.fromkeys(r["method"] for r in runs))
     fig, axes = plt.subplots(1, len(panels), figsize=(10, 3.8), sharey=True)
     for ax, panel in zip(axes, panels):
         mine = [r for r in runs if r["panel"] == panel]
         x_end = max(r["updates"][-1] for r in mine) / 1000
-        tops = _spread([r["score"][-1] for r in mine], 0.0024)
+        tops = _spread([r["score"][-1] for r in mine], 0.0015)
         for r, top in zip(mine, tops):
             colour = SERIES[methods.index(r["method"])]
             x = np.array(r["updates"]) / 1000
@@ -1060,15 +1059,12 @@ def fig_search(runs, ceilings):
                        lw=2, zorder=3)
             ax.text(x[-1] + 0.03 * x_end, top, f"{r['score'][-1]:.4f}", va="center",
                     fontsize=8.5)
-        for label, y in ceilings.items():
-            ax.axhline(y, color=INK_2, lw=1, ls="--", zorder=0)
-            ax.text(0, y + 0.0007, f"{label}: {y:.3f}", fontsize=8, color=INK_2)
         ax.set_title(panel, fontsize=10)
         ax.set_xlim(0, x_end * 1.15)
         ax.set_xlabel("Annealing updates (thousands)")
         ax.grid(axis="y")
         ax.set_axisbelow(True)
-    axes[0].set_ylim(0.745, 0.79)
+    axes[0].set_ylim(0.745, 0.772)
     axes[0].set_ylabel("Score if all 100 pass")
     handles = [Line2D([], [], color=SERIES[k], lw=2, label=m) for k, m in enumerate(methods)]
     handles.append(Line2D([], [], marker="o", ls="", color=INK_2, label="end of a pass"))

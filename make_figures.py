@@ -130,10 +130,6 @@ def stage4():
 BANDS = ((0.0, 0.02), (0.02, 0.04), (0.04, 0.06), (0.06, 0.10))  # above the cut-off
 CUSHIONS = {"Wellness": 0.06, "Tax": 0.04, "Transportation": 0.04, "Business": 0.04}  # tries R, T
 SEARCH_RUNS = os.path.join(validity.PS2_ROOT, "docs", "search_runs.csv")
-NO_RULE = {  # decisions.md, 9 Nov (morning, continued): from F, distances only
-    "our search, no approval rule": 0.7766,
-    "grids built from a code, no approval rule": 0.7837,
-}
 
 
 def _search_runs():
@@ -196,7 +192,7 @@ def report():
         print(f"  {a} failing by band: " + ", ".join(f"{100 * v:.1f}%" for v in s.values()))
     _save(plots.fig_model_approvals(rows, passing), "report_models.png")
     _save(plots.fig_failure_bands(shares, CUSHIONS), "report_cushion.png")
-    _save(plots.fig_search(_search_runs(), NO_RULE), "report_search.png")
+    _save(plots.fig_search(_search_runs()), "report_search.png")
 
 
 STAGES = {0: readme, 1: stage1, 2: stage2, 4: stage4, 5: report}  # 0 = the README's own figures
