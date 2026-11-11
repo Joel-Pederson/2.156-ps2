@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import to_rgba
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 
@@ -1003,8 +1002,8 @@ def fig_model_approvals(rows, passing):
 
 def fig_failure_bands(shares, cushions):
     """Share of held-out grids that truly fail, by how far the model put them above its
-    cut-off (shares: {advisor: {(lo, hi): share}}). Bars below an advisor's cushion
-    (cushions: {advisor: margin}) are pale: no submitted design sat there."""
+    cut-off (shares: {advisor: {(lo, hi): share}}), with a dashed line at each cushion we
+    used (cushions: {advisor: margin}), labelled with the advisors it applies to."""
     advisors = list(shares)
     bands = list(next(iter(shares.values())))
     fig, ax = plt.subplots(figsize=(8, 3.4))
@@ -1012,21 +1011,23 @@ def fig_failure_bands(shares, cushions):
     for k, adv in enumerate(advisors):
         x = np.arange(len(bands)) + (k - (len(advisors) - 1) / 2) * width
         vals = [100 * shares[adv][b] for b in bands]
-        alpha = [1 if lo >= cushions[adv] - 1e-9 else 0.3 for lo, _ in bands]
-        ax.bar(x, vals, width, color=[to_rgba(SERIES[k], a) for a in alpha],
-               edgecolor=SURFACE, linewidth=2)
+        ax.bar(x, vals, width, color=SERIES[k], edgecolor=SURFACE, linewidth=2, label=adv)
         for xi, v in zip(x, vals):
             ax.text(xi, v + 0.4, f"{v:.0f}" if v >= 10 else f"{v:.1f}", ha="center",
                     va="bottom", fontsize=7.5)
+    top = ax.get_ylim()[1]
+    for cushion in sorted(set(cushions.values())):
+        edge = next(i for i, (lo, _) in enumerate(bands) if lo >= cushion - 1e-9) - 0.5
+        names = [a for a in advisors if cushions[a] == cushion]
+        ax.axvline(edge, color=INK_2, lw=1, ls="--")
+        ax.text(edge + 0.05, top * 0.95, f"cushion {cushion:.2f}:\n" + ",\n".join(names),
+                fontsize=8, color=INK_2, va="top")
     ax.set_xticks(range(len(bands)), [f"{lo:.2f}–{hi:.2f}" for lo, hi in bands])
     ax.set_xlabel("How far the model put the grid above its approval cut-off")
     ax.set_ylabel("Held-out grids that truly fail (%)")
     ax.grid(axis="y")
     ax.set_axisbelow(True)
-    handles = [Patch(color=SERIES[k], label=f"{a} (cushion {cushions[a]:.2f})")
-               for k, a in enumerate(advisors)]
-    handles.append(Patch(color=INK_2, alpha=0.3, label="below that advisor's cushion"))
-    ax.legend(handles=handles, fontsize=8.5, loc="upper right")
+    ax.legend(fontsize=8.5, ncol=len(advisors), loc="upper center", bbox_to_anchor=(0.5, 1.12))
     return fig
 
 
